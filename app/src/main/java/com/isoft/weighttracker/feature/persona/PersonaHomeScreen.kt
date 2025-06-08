@@ -27,7 +27,7 @@ fun PersonaHomeScreen(navController: NavController) {
         "Metas" to "historialMetas",
         "Registrar comida" to "historialComidas",
         "Registrar actividad física" to "historialActividad",
-        "Reporte de avance" to "reporteProgreso",
+        "Reporte de avance" to "historialReporte",
         "Profesional" to "asociarProfesional"
     )
 

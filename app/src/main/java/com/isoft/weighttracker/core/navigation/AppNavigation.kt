@@ -19,7 +19,6 @@ import com.isoft.weighttracker.feature.comidas.viewmodel.ComidaViewModel
 import com.isoft.weighttracker.feature.antropometria.viewmodel.AntropometriaViewModel
 import com.isoft.weighttracker.feature.selectRole.ui.SelectRoleScreen
 import com.isoft.weighttracker.feature.DatosPersonales.ui.DatosPersonalesScreen
-import com.isoft.weighttracker.feature.reporte.ui.ReporteAvanceScreen
 import com.isoft.weighttracker.feature.comidas.ui.RegistrarComidasScreen
 import com.isoft.weighttracker.feature.comidas.ui.HistorialComidasScreen
 import com.isoft.weighttracker.feature.actividadfisica.model.ActividadFisica
@@ -38,6 +37,9 @@ import com.isoft.weighttracker.feature.profesional.planes.ui.PlanesScreen
 import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
 import com.isoft.weighttracker.feature.profesional.ui.DatosProfesionalScreen
 import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.DetalleReporteScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.HistorialReportesScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.RegistrarReporteScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -88,8 +90,17 @@ fun AppNavigation(
             AsociarProfesionalScreen(navController)
         }
 
-        composable("reporteAvance") {
-            ReporteAvanceScreen(navController)
+        composable("historialReporte") {
+            HistorialReportesScreen(navController)
+        }
+
+        composable("registrarReporte") {
+            RegistrarReporteScreen(navController)
+        }
+
+        composable("detalleReporte/{id}") { backStackEntry ->
+            val id = backStackEntry.arguments?.getString("id") ?: ""
+            DetalleReporteScreen(navController, reporteId = id)
         }
 
         composable("historialComidas") {

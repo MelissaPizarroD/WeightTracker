@@ -64,6 +64,45 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+    // Función específica para cargar solo la meta activa
+    fun cargarMetaActiva() {
+        viewModelScope.launch {
+            try {
+                val metaActiva = metasRepository.obtenerMetaActiva()
+                _metaActiva.value = metaActiva
+                Log.d("MetasViewModel", "Meta activa cargada: ${metaActiva?.id}")
+                metaActiva?.let { calcularProgreso(it) }
+            } catch (e: Exception) {
+                Log.e("MetasViewModel", "Error al cargar meta activa", e)
+                _metaActiva.value = null
+            }
+        }
+    }
+
+    // Función específica para cargar solo el progreso
+    fun cargarProgreso() {
+        viewModelScope.launch {
+            try {
+                val metaActiva = _metaActiva.value
+                if (metaActiva != null) {
+                    calcularProgreso(metaActiva)
+                } else {
+                    // Si no hay meta activa, intentar cargarla primero
+                    val meta = metasRepository.obtenerMetaActiva()
+                    if (meta != null) {
+                        _metaActiva.value = meta
+                        calcularProgreso(meta)
+                    } else {
+                        _progreso.value = null
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MetasViewModel", "Error al cargar progreso", e)
+                _progreso.value = null
+            }
+        }
+    }
+
     private suspend fun calcularProgreso(meta: Meta) {
         val registros = antropometriaRepository.obtenerRegistros()
         val registrosFiltrados = registros.filter { it.fecha >= meta.fechaInicio }
