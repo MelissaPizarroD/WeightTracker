@@ -12,7 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.gson.Gson
-import com.isoft.weighttracker.feature.home.ui.PersonaHomeScreen
+import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
 import com.isoft.weighttracker.feature.login.ui.LoginScreen
 import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModel
 import com.isoft.weighttracker.feature.comidas.viewmodel.ComidaViewModel
@@ -34,7 +34,10 @@ import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
 import com.isoft.weighttracker.feature.comidas.model.Comida
 import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import com.isoft.weighttracker.core.permissions.PermissionViewModel
-import com.isoft.weighttracker.feature.home.ui.ProfesionalHomeScreen
+import com.isoft.weighttracker.feature.profesional.planes.ui.PlanesScreen
+import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
+import com.isoft.weighttracker.feature.profesional.ui.DatosProfesionalScreen
+import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -166,6 +169,19 @@ fun AppNavigation(
         }
         composable("registrarMeta") {
             RegistrarMetaScreen(navController)
+        }
+
+        //Profesionales
+        composable("datosProfesional") {
+            DatosProfesionalScreen(navController)
+        }
+
+        composable("planesSolicitados") {
+            PlanesScreen(navController)
+        }
+
+        composable("reportesClientes") {
+            ReportesScreen(navController)
         }
 
     }

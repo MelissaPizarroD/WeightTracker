@@ -122,6 +122,21 @@ class UserRepository {
         return true
     }
 
+    //funcion para que profesionales obtengan clientes
+    suspend fun getUsuariosAsociados(tipo: String, uidProfesional: String): List<User> {
+        return try {
+            val querySnapshot = db.collection("users")
+                .whereEqualTo("profesionales.$tipo", uidProfesional)
+                .get()
+                .await()
+
+            querySnapshot.documents.mapNotNull { it.toObject(User::class.java) }
+        } catch (e: Exception) {
+            Log.e("UserRepository", "❌ Error al obtener usuarios asociados ($tipo): ${e.message}", e)
+            emptyList()
+        }
+    }
+
     fun signOut() {
         auth.signOut()
     }

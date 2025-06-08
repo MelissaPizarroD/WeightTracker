@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.home.ui
+package com.isoft.weighttracker.feature.persona
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons

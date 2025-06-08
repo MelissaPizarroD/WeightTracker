@@ -46,7 +46,6 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             .launchIn(viewModelScope)
     }
 
-    // ✅ MEJOR SOLUCIÓN: Simple y directa
     fun updateUserRole(role: String) {
         viewModelScope.launch {
             val user = userRepo.getUser() ?: run {

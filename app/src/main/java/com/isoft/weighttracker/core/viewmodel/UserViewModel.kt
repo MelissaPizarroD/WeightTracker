@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.data.UserRepository
 import com.isoft.weighttracker.core.model.PersonaProfile
+import com.isoft.weighttracker.core.model.ProfesionalProfile
 import com.isoft.weighttracker.core.notifications.recordatorios.AlarmScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -29,6 +30,9 @@ class UserViewModel : ViewModel() {
 
     private val _personaProfile = MutableStateFlow<PersonaProfile?>(null)
     val personaProfile: StateFlow<PersonaProfile?> = _personaProfile
+
+    private val _profesionalProfile = MutableStateFlow<ProfesionalProfile?>(null)
+    val profesionalProfile: StateFlow<ProfesionalProfile?> = _profesionalProfile
 
     fun loadUser() {
         viewModelScope.launch {
@@ -111,6 +115,25 @@ class UserViewModel : ViewModel() {
             }
         }
     }
+
+    //Para profesionales
+    fun loadProfesionalProfile() {
+        viewModelScope.launch {
+            val profile = userRepo.getProfesionalProfile()
+            if (profile != null) _profesionalProfile.value = profile
+        }
+    }
+
+    fun updateProfesionalProfile(profile: ProfesionalProfile, onSuccess: () -> Unit) {
+        viewModelScope.launch {
+            val ok = userRepo.updateProfesionalProfile(profile)
+            if (ok) {
+                _profesionalProfile.value = profile
+                onSuccess()
+            }
+        }
+    }
+
 
     fun clearUser() {
         _currentUser.value = null
