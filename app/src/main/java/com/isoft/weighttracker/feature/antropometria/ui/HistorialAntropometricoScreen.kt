@@ -141,12 +141,62 @@ fun HistorialAntropometricoScreen(
         }
     }
 
+    //AQUI HICE CAMBIO
+
     if (persona == null) {
         Box(Modifier.fillMaxSize(), Alignment.Center) {
             CircularProgressIndicator()
         }
         return
     }
+
+    val datosIncompletos = persona.estatura == null || persona.sexo.isNullOrBlank() || persona.edad == null
+
+    if (datosIncompletos) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(48.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Primero registra tus datos personales",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Necesitamos información como tu edad, sexo y estatura para registrar mediciones.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { navController.navigate("datosPersonales") }) {
+                        Text("Ir a Datos Personales")
+                    }
+                }
+            }
+        }
+        return
+    }
+    //TERMINA EL CAMBIO
 
     Scaffold(
         topBar = {
