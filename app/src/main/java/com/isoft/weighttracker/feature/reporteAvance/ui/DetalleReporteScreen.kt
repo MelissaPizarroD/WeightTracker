@@ -12,7 +12,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -20,7 +19,6 @@ import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
-import com.isoft.weighttracker.core.notifications.ReportesNotificationHelper
 import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.Retroalimentacion
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
@@ -35,7 +33,6 @@ fun DetalleReporteScreen(
     reporteId: String,
     viewModel: ReporteAvanceViewModel = viewModel()
 ) {
-    val context = LocalContext.current
     val reporte by viewModel.reporteActual.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -74,26 +71,11 @@ fun DetalleReporteScreen(
                             val reporteActualizado = snapshot.toObject(ReporteAvance::class.java)
                             reporteEnTiempoReal = reporteActualizado
 
-                            // 🔔 NUEVA FUNCIONALIDAD: Detectar nuevas retroalimentaciones
+                            // Si hay nuevas retroalimentaciones, mostrar notificación
                             val retroalimentacionesAntes = reporte?.retroalimentaciones?.size ?: 0
                             val retroalimentacionesAhora = reporteActualizado?.retroalimentaciones?.size ?: 0
 
                             if (retroalimentacionesAhora > retroalimentacionesAntes && retroalimentacionesAntes > 0) {
-                                // Obtener la retroalimentación más reciente
-                                val nuevaRetroalimentacion = reporteActualizado?.retroalimentaciones
-                                    ?.maxByOrNull { it.fecha }
-
-                                // 🎯 Crear notificación de nueva retroalimentación
-                                nuevaRetroalimentacion?.let { retro ->
-                                    ReportesNotificationHelper.notificarNuevaRetroalimentacion(
-                                        context = context,
-                                        reporteId = reporteId,
-                                        nombreProfesional = retro.nombreProfesional.ifBlank { "Profesional" },
-                                        rolProfesional = retro.rolProfesional.ifBlank { "Profesional" },
-                                        contenidoPreview = retro.contenido
-                                    )
-                                }
-
                                 scope.launch {
                                     snackbarHostState.showSnackbar(
                                         "✨ Nueva retroalimentación agregada",
@@ -138,7 +120,7 @@ fun DetalleReporteScreen(
                             Text(
                                 "Con ${reporteActual.retroalimentaciones.size} retroalimentación(es)",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
                         }
                     }
@@ -148,6 +130,12 @@ fun DetalleReporteScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 actions = {
                     // Botón de actualización manual
                     IconButton(onClick = {
@@ -157,16 +145,6 @@ fun DetalleReporteScreen(
                     }
                 }
             )
-        },
-        floatingActionButton = {
-            if (reporteActual != null) {
-                FloatingActionButton(
-                    onClick = { navController.navigate("retroalimentacion/${reporteActual!!.id}") },
-                    containerColor = MaterialTheme.colorScheme.secondary
-                ) {
-                    Icon(Icons.Default.Feedback, contentDescription = "Retroalimentar")
-                }
-            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->

@@ -8,15 +8,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.CloudSync
+
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -40,7 +38,6 @@ fun HistorialReportesScreen(
 
     var filtroTipo by remember { mutableStateOf<TipoReporte?>(null) }
     var mostrarFiltros by remember { mutableStateOf(false) }
-    var mostrarDebugInfo by remember { mutableStateOf(false) }
 
     // Filtrar reportes según el tipo seleccionado
     val reportesFiltrados = remember(historial, filtroTipo) {
@@ -51,7 +48,7 @@ fun HistorialReportesScreen(
         }
     }
 
-    // Calcular estadísticas para debugging
+    // Calcular estadísticas
     val reportesConRetro = reportesFiltrados.count { it.retroalimentaciones.isNotEmpty() }
     val totalRetroalimentaciones = reportesFiltrados.sumOf { it.retroalimentaciones.size }
 
@@ -69,57 +66,25 @@ fun HistorialReportesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("Historial de Reportes")
-                        if (mostrarDebugInfo) {
-                            Text(
-                                "Total: ${reportesFiltrados.size} | Con retro: $reportesConRetro | Retros: $totalRetroalimentaciones",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                },
+                title = { Text("Historial de Reportes") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 actions = {
-                    // Debug toggle
-                    IconButton(onClick = { mostrarDebugInfo = !mostrarDebugInfo }) {
-                        Icon(
-                            Icons.Default.BugReport,
-                            contentDescription = "Debug",
-                            tint = if (mostrarDebugInfo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-
                     IconButton(onClick = {
                         navController.navigate("graficasAnaliticas")
                     }) {
                         Icon(Icons.Default.Assessment, contentDescription = "Análisis Gráfico")
                     }
 
-                    // Actualización desde servidor
-                    IconButton(
-                        onClick = {
-                            viewModel.forzarActualizacionCompleta()
-                        },
-                        enabled = !isLoading
-                    ) {
-                        if (isLoading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(20.dp),
-                                strokeWidth = 2.dp
-                            )
-                        } else {
-                            Icon(Icons.Default.CloudSync, contentDescription = "Forzar desde servidor")
-                        }
-                    }
-
-                    // Actualización manual
                     IconButton(
                         onClick = {
                             viewModel.actualizarHistorial()
@@ -150,44 +115,6 @@ fun HistorialReportesScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
-            // Debug info panel
-            if (mostrarDebugInfo) {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(
-                            "🐛 Info de Debug",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("• Total reportes: ${reportesFiltrados.size}", style = MaterialTheme.typography.bodySmall)
-                        Text("• Con retroalimentaciones: $reportesConRetro", style = MaterialTheme.typography.bodySmall)
-                        Text("• Total retroalimentaciones: $totalRetroalimentaciones", style = MaterialTheme.typography.bodySmall)
-                        Text("• Cargando: $isLoading", style = MaterialTheme.typography.bodySmall)
-                        if (error != null) {
-                            Text("• Error: $error", style = MaterialTheme.typography.bodySmall, color = Color.Red)
-                        }
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            TextButton(onClick = { navController.navigate("debugReportes") }) {
-                                Text("Ver Debug Completo", style = MaterialTheme.typography.bodySmall)
-                            }
-                            TextButton(onClick = { viewModel.ejecutarDiagnostico() }) {
-                                Text("Diagnóstico", style = MaterialTheme.typography.bodySmall)
-                            }
-                        }
-                    }
-                }
-            }
-
             // Banner de retroalimentaciones
             if (reportesConRetro > 0) {
                 Card(
@@ -313,13 +240,6 @@ fun HistorialReportesScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
-
-                            if (mostrarDebugInfo) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Button(onClick = { navController.navigate("debugReportes") }) {
-                                    Text("Ir a Debug Screen")
-                                }
-                            }
                         }
                     }
                 }
@@ -343,8 +263,7 @@ fun HistorialReportesScreen(
                             onClick = {
                                 navController.navigate("detalleReporte/${reporte.id}")
                             },
-                            tieneRetroalimentaciones = reporte.retroalimentaciones.isNotEmpty(),
-                            mostrarDebugInfo = mostrarDebugInfo
+                            tieneRetroalimentaciones = reporte.retroalimentaciones.isNotEmpty()
                         )
                     }
                 }
@@ -357,8 +276,7 @@ fun HistorialReportesScreen(
 fun ReporteCard(
     reporte: ReporteAvance,
     onClick: () -> Unit,
-    tieneRetroalimentaciones: Boolean = false,
-    mostrarDebugInfo: Boolean = false
+    tieneRetroalimentaciones: Boolean = false
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val fechaInicio = sdf.format(Date(reporte.fechaInicio))
@@ -376,16 +294,6 @@ fun ReporteCard(
         )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            // Debug info si está activado
-            if (mostrarDebugInfo) {
-                Text(
-                    "ID: ${reporte.id}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-            }
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -458,19 +366,6 @@ fun ReporteCard(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Medium
                 )
-
-                // Mostrar preview de la última retroalimentación si debug está activado
-                if (mostrarDebugInfo && reporte.retroalimentaciones.isNotEmpty()) {
-                    val ultimaRetro = reporte.retroalimentaciones.maxByOrNull { it.fecha }
-                    if (ultimaRetro != null) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            "Última: ${ultimaRetro.contenido.take(100)}...",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
             }
         }
     }

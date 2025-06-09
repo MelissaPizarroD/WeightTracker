@@ -17,12 +17,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.firestore.FirebaseFirestore
-import com.isoft.weighttracker.core.notifications.ReportesNotificationHelper
 import com.isoft.weighttracker.feature.reporteAvance.model.Retroalimentacion
 import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -33,7 +30,7 @@ fun RetroalimentacionScreen(
     reporteId: String,
     usuarioId: String,
     profesionalViewModel: com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel = viewModel(),
-    userViewModel: UserViewModel = viewModel()
+    userViewModel: UserViewModel = viewModel() // ✅ AGREGADO: Para obtener datos del profesional
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -42,7 +39,7 @@ fun RetroalimentacionScreen(
     val isLoading by profesionalViewModel.isLoading.collectAsState()
     val error by profesionalViewModel.error.collectAsState()
 
-    // Estados para datos del profesional
+    // ✅ AGREGADO: Estados para datos del profesional
     val currentUser by userViewModel.currentUser.collectAsState()
     val profesionalProfile by userViewModel.profesionalProfile.collectAsState()
 
@@ -51,28 +48,7 @@ fun RetroalimentacionScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // 🎯 FUNCIÓN PARA OBTENER DATOS DEL USUARIO DESTINATARIO
-    suspend fun obtenerDatosUsuarioDestinatario(): Pair<String, String> {
-        return try {
-            val db = FirebaseFirestore.getInstance()
-            val usuarioDoc = db.collection("users")
-                .document(usuarioId)
-                .get()
-                .await()
-
-            if (usuarioDoc.exists()) {
-                val nombreUsuario = usuarioDoc.getString("name") ?: "Usuario"
-                val emailUsuario = usuarioDoc.getString("email") ?: ""
-                Pair(nombreUsuario, emailUsuario)
-            } else {
-                Pair("Usuario", "")
-            }
-        } catch (e: Exception) {
-            Pair("Usuario", "")
-        }
-    }
-
-    // Cargar datos del profesional al inicio
+    // ✅ AGREGADO: Cargar datos del profesional al inicio
     LaunchedEffect(Unit) {
         profesionalViewModel.cargarReportePorId(reporteId, usuarioId)
         userViewModel.loadUser()
@@ -90,21 +66,18 @@ fun RetroalimentacionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Column {
-                        Text("Agregar Retroalimentación")
-                        Text(
-                            "Las notificaciones se enviarán automáticamente",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
+                title = { Text("Agregar Retroalimentación") },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                )
             )
         },
         floatingActionButton = {
@@ -114,44 +87,24 @@ fun RetroalimentacionScreen(
                         if (!enviandoRetroalimentacion) {
                             enviandoRetroalimentacion = true
 
-                            // Crear retroalimentación con datos del profesional
+                            // ✅ MEJORADO: Crear retroalimentación con datos del profesional
                             val nuevaRetroalimentacion = Retroalimentacion(
                                 fecha = System.currentTimeMillis(),
                                 idProfesional = FirebaseAuth.getInstance().currentUser?.uid ?: "",
                                 contenido = textoRetroalimentacion.trim(),
+                                // ✅ NUEVOS CAMPOS con datos del profesional
                                 nombreProfesional = currentUser?.name ?: "Profesional",
                                 rolProfesional = currentUser?.role ?: "profesional",
                                 emailProfesional = currentUser?.email ?: ""
                             )
 
                             scope.launch {
-                                try {
-                                    // 🔔 PRIMERO: Agregar la retroalimentación
-                                    profesionalViewModel.agregarRetroalimentacion(reporteId, usuarioId, nuevaRetroalimentacion)
-
-                                    // 🎯 SEGUNDO: Obtener datos del usuario destinatario para notificación
-                                    val (nombreUsuario, emailUsuario) = obtenerDatosUsuarioDestinatario()
-
-                                    // 🔔 TERCERO: Crear notificación para el usuario
-                                    ReportesNotificationHelper.notificarNuevaRetroalimentacion(
-                                        context = context,
-                                        reporteId = reporteId,
-                                        nombreProfesional = currentUser?.name ?: "Profesional",
-                                        rolProfesional = currentUser?.role ?: "profesional",
-                                        contenidoPreview = textoRetroalimentacion.trim()
-                                    )
-
-                                    // 🎉 MOSTRAR MENSAJE DE ÉXITO
-                                    snackbarHostState.showSnackbar("✅ Retroalimentación enviada y notificación creada")
-
-                                    // Recargar el reporte para mostrar la nueva retroalimentación
-                                    profesionalViewModel.cargarReportePorId(reporteId, usuarioId)
-                                    enviandoRetroalimentacion = false
-                                    textoRetroalimentacion = "" // Limpiar el campo
-                                } catch (e: Exception) {
-                                    snackbarHostState.showSnackbar("❌ Error al enviar retroalimentación: ${e.message}")
-                                    enviandoRetroalimentacion = false
-                                }
+                                profesionalViewModel.agregarRetroalimentacion(reporteId, usuarioId, nuevaRetroalimentacion)
+                                snackbarHostState.showSnackbar("Retroalimentación enviada exitosamente ✅")
+                                // Recargar el reporte para mostrar la nueva retroalimentación
+                                profesionalViewModel.cargarReportePorId(reporteId, usuarioId)
+                                enviandoRetroalimentacion = false
+                                textoRetroalimentacion = "" // Limpiar el campo
                             }
                         }
                     },
@@ -164,13 +117,7 @@ fun RetroalimentacionScreen(
                             strokeWidth = 2.dp
                         )
                     } else {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Default.Send, contentDescription = "Enviar")
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("🔔", style = MaterialTheme.typography.bodySmall)
-                        }
+                        Icon(Icons.Default.Send, contentDescription = "Enviar")
                     }
                 }
             }
@@ -217,7 +164,7 @@ fun RetroalimentacionScreen(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // Mostrar quién está escribiendo la retroalimentación
+                    // ✅ AGREGADO: Mostrar quién está escribiendo la retroalimentación
                     Card(
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
@@ -253,42 +200,6 @@ fun RetroalimentacionScreen(
                         }
                     }
 
-                    // 🔔 NUEVA SECCIÓN: Información sobre notificaciones
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text("🔔", style = MaterialTheme.typography.titleMedium)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text(
-                                    "Notificaciones automáticas",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "• El usuario recibirá una notificación inmediata cuando envíes la retroalimentación",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                "• La notificación incluirá tu nombre, rol y un preview del comentario",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                "• El usuario podrá tocar la notificación para ver el reporte completo",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
-                    }
-
                     // Vista completa del reporte para profesionales
                     DetalleReporteParaProfesional(reporte = reporte!!)
 
@@ -302,13 +213,13 @@ fun RetroalimentacionScreen(
                         texto = textoRetroalimentacion,
                         onTextoChange = { textoRetroalimentacion = it },
                         enviando = enviandoRetroalimentacion,
-                        rolProfesional = currentUser?.role
+                        rolProfesional = currentUser?.role // ✅ AGREGADO: Pasar el rol
                     )
 
                     // Plantillas sugeridas por rol
                     if (textoRetroalimentacion.isBlank()) {
                         PlantillasRetroalimentacion(
-                            rolProfesional = currentUser?.role ?: "",
+                            rolProfesional = currentUser?.role ?: "", // ✅ AGREGADO: Pasar el rol
                             onPlantillaSeleccionada = { plantilla ->
                                 textoRetroalimentacion = plantilla
                             }
@@ -579,7 +490,7 @@ private fun RetroalimentacionesAnteriores(
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            // Mostrar información del profesional
+                            // ✅ MEJORADO: Mostrar información del profesional
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
                                     when (retro.rolProfesional.lowercase()) {
@@ -630,42 +541,15 @@ private fun NuevaRetroalimentacionCard(
     texto: String,
     onTextoChange: (String) -> Unit,
     enviando: Boolean,
-    rolProfesional: String? = null
+    rolProfesional: String? = null // ✅ AGREGADO
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "✍️ Nueva Retroalimentación",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                // 🔔 Indicador de notificación
-                if (texto.isNotBlank() && texto.length <= 500) {
-                    Surface(
-                        color = MaterialTheme.colorScheme.primaryContainer,
-                        shape = MaterialTheme.shapes.small
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("🔔", style = MaterialTheme.typography.bodySmall)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                "Se enviará notificación",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                }
-            }
+            Text(
+                "✍️ Nueva Retroalimentación",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -728,7 +612,7 @@ private fun NuevaRetroalimentacionCard(
                     CircularProgressIndicator(modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "Enviando retroalimentación y notificación...",
+                        "Enviando retroalimentación...",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -738,34 +622,23 @@ private fun NuevaRetroalimentacionCard(
     }
 }
 
-// Plantillas específicas por rol del profesional
+// ✅ MEJORADO: Plantillas específicas por rol del profesional
 @Composable
 private fun PlantillasRetroalimentacion(
-    rolProfesional: String = "",
+    rolProfesional: String = "", // ✅ AGREGADO
     onPlantillaSeleccionada: (String) -> Unit
 ) {
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    "💡 Plantillas Sugeridas para ${rolProfesional.replaceFirstChar { it.uppercase() }}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    "🔔",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+            Text(
+                "💡 Plantillas Sugeridas para ${rolProfesional.replaceFirstChar { it.uppercase() }}",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Plantillas específicas por rol
+            // ✅ MEJORADO: Plantillas específicas por rol
             val plantillas = when (rolProfesional.lowercase()) {
                 "nutricionista" -> listOf(
                     "Excelente control nutricional esta semana. Continúa con la alimentación balanceada y mantén la hidratación.",
@@ -802,20 +675,6 @@ private fun PlantillasRetroalimentacion(
                     )
                 }
                 Spacer(modifier = Modifier.height(4.dp))
-            }
-
-            // 🔔 Nota sobre notificaciones automáticas
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                shape = MaterialTheme.shapes.small
-            ) {
-                Text(
-                    "💡 Cualquier plantilla que selecciones enviará automáticamente una notificación al usuario",
-                    modifier = Modifier.padding(8.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }

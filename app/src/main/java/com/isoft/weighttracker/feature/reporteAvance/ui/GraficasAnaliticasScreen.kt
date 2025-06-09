@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -62,9 +63,15 @@ fun GraficasAnaliticasScreen(
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
+                ),
                 actions = {
-                    TextButton(onClick = { mostrarFiltros = !mostrarFiltros }) {
-                        Text(if (mostrarFiltros) "Ocultar Filtros" else "Filtros")
+                    IconButton(onClick = { mostrarFiltros = !mostrarFiltros }) {
+                        Icon(Icons.Default.FilterList, contentDescription = "Filtros")
                     }
                 }
             )
