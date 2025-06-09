@@ -6,17 +6,25 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Feedback
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.ListenerRegistration
+import com.isoft.weighttracker.core.notifications.ReportesNotificationHelper
 import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
+import com.isoft.weighttracker.feature.reporteAvance.model.Retroalimentacion
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,12 +35,87 @@ fun DetalleReporteScreen(
     reporteId: String,
     viewModel: ReporteAvanceViewModel = viewModel()
 ) {
+    val context = LocalContext.current
     val reporte by viewModel.reporteActual.collectAsState()
     val error by viewModel.error.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(Unit) {
+    // Estado para listener en tiempo real específico del reporte
+    var reporteListener by remember { mutableStateOf<ListenerRegistration?>(null) }
+    var reporteEnTiempoReal by remember { mutableStateOf<ReporteAvance?>(null) }
+
+    // Configurar listener para este reporte específico
+    LaunchedEffect(reporteId) {
         viewModel.cargarReportePorId(reporteId)
+
+        // Configurar listener en tiempo real para el reporte específico
+        val auth = FirebaseAuth.getInstance()
+        val db = FirebaseFirestore.getInstance()
+        val uid = auth.currentUser?.uid
+
+        if (uid != null) {
+            reporteListener?.remove() // Limpiar listener anterior
+
+            reporteListener = db.collection("users")
+                .document(uid)
+                .collection("reportes_avance")
+                .document(reporteId)
+                .addSnapshotListener { snapshot, listenerError ->
+                    if (listenerError != null) {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("Error al actualizar reporte en tiempo real")
+                        }
+                        return@addSnapshotListener
+                    }
+
+                    if (snapshot != null && snapshot.exists()) {
+                        try {
+                            val reporteActualizado = snapshot.toObject(ReporteAvance::class.java)
+                            reporteEnTiempoReal = reporteActualizado
+
+                            // 🔔 NUEVA FUNCIONALIDAD: Detectar nuevas retroalimentaciones
+                            val retroalimentacionesAntes = reporte?.retroalimentaciones?.size ?: 0
+                            val retroalimentacionesAhora = reporteActualizado?.retroalimentaciones?.size ?: 0
+
+                            if (retroalimentacionesAhora > retroalimentacionesAntes && retroalimentacionesAntes > 0) {
+                                // Obtener la retroalimentación más reciente
+                                val nuevaRetroalimentacion = reporteActualizado?.retroalimentaciones
+                                    ?.maxByOrNull { it.fecha }
+
+                                // 🎯 Crear notificación de nueva retroalimentación
+                                nuevaRetroalimentacion?.let { retro ->
+                                    ReportesNotificationHelper.notificarNuevaRetroalimentacion(
+                                        context = context,
+                                        reporteId = reporteId,
+                                        nombreProfesional = retro.nombreProfesional.ifBlank { "Profesional" },
+                                        rolProfesional = retro.rolProfesional.ifBlank { "Profesional" },
+                                        contenidoPreview = retro.contenido
+                                    )
+                                }
+
+                                scope.launch {
+                                    snackbarHostState.showSnackbar(
+                                        "✨ Nueva retroalimentación agregada",
+                                        duration = SnackbarDuration.Long
+                                    )
+                                }
+                            }
+                        } catch (e: Exception) {
+                            scope.launch {
+                                snackbarHostState.showSnackbar("Error al procesar actualización del reporte")
+                            }
+                        }
+                    }
+                }
+        }
+    }
+
+    // Limpiar listener al salir
+    DisposableEffect(Unit) {
+        onDispose {
+            reporteListener?.remove()
+        }
     }
 
     LaunchedEffect(error) {
@@ -42,21 +125,43 @@ fun DetalleReporteScreen(
         }
     }
 
+    // Usar el reporte en tiempo real si está disponible, sino el del viewmodel
+    val reporteActual = reporteEnTiempoReal ?: reporte
+
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Detalle del Reporte") },
+                title = {
+                    Column {
+                        Text("Detalle del Reporte")
+                        if (reporteActual?.retroalimentaciones?.isNotEmpty() == true) {
+                            Text(
+                                "Con ${reporteActual.retroalimentaciones.size} retroalimentación(es)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
+                    }
+                },
+                actions = {
+                    // Botón de actualización manual
+                    IconButton(onClick = {
+                        viewModel.cargarReportePorId(reporteId)
+                    }) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
                     }
                 }
             )
         },
         floatingActionButton = {
-            if (reporte != null) {
+            if (reporteActual != null) {
                 FloatingActionButton(
-                    onClick = { navController.navigate("retroalimentacion/${reporte!!.id}") },
+                    onClick = { navController.navigate("retroalimentacion/${reporteActual!!.id}") },
                     containerColor = MaterialTheme.colorScheme.secondary
                 ) {
                     Icon(Icons.Default.Feedback, contentDescription = "Retroalimentar")
@@ -67,10 +172,11 @@ fun DetalleReporteScreen(
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when {
-                reporte != null -> {
+                reporteActual != null -> {
                     DetalleReporteContent(
-                        reporte = reporte!!,
-                        modifier = Modifier.padding(16.dp)
+                        reporte = reporteActual!!,
+                        modifier = Modifier.padding(16.dp),
+                        enTiempoReal = reporteEnTiempoReal != null
                     )
                 }
                 else -> {
@@ -91,7 +197,11 @@ fun DetalleReporteScreen(
 }
 
 @Composable
-fun DetalleReporteContent(reporte: ReporteAvance, modifier: Modifier = Modifier) {
+fun DetalleReporteContent(
+    reporte: ReporteAvance,
+    modifier: Modifier = Modifier,
+    enTiempoReal: Boolean = false
+) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val fechaInicio = sdf.format(Date(reporte.fechaInicio))
     val fechaFin = sdf.format(Date(reporte.fechaFin))
@@ -102,6 +212,29 @@ fun DetalleReporteContent(reporte: ReporteAvance, modifier: Modifier = Modifier)
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Banner si está actualizándose en tiempo real
+        if (enTiempoReal) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("🔄", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        "Este reporte se actualiza automáticamente",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                    )
+                }
+            }
+        }
+
         // Header con información básica
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -119,16 +252,34 @@ fun DetalleReporteContent(reporte: ReporteAvance, modifier: Modifier = Modifier)
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Surface(
-                        color = MaterialTheme.colorScheme.primary,
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text(
-                            reporte.tipoReporte.name,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Mostrar número de retroalimentaciones si las hay
+                        if (reporte.retroalimentaciones.isNotEmpty()) {
+                            Surface(
+                                color = MaterialTheme.colorScheme.secondary,
+                                shape = MaterialTheme.shapes.medium
+                            ) {
+                                Text(
+                                    "💬 ${reporte.retroalimentaciones.size}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSecondary
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.medium
+                        ) {
+                            Text(
+                                reporte.tipoReporte.name,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
                     }
                 }
 
@@ -264,14 +415,35 @@ fun DetalleReporteContent(reporte: ReporteAvance, modifier: Modifier = Modifier)
             }
         }
 
-        // Retroalimentaciones
+        // ✅ MEJORADO: Retroalimentaciones con datos del profesional
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    "🗣️ Retroalimentaciones",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        "🗣️ Retroalimentaciones",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (reporte.retroalimentaciones.isNotEmpty()) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "${reporte.retroalimentaciones.size} comentarios",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 if (reporte.retroalimentaciones.isEmpty()) {
@@ -282,33 +454,76 @@ fun DetalleReporteContent(reporte: ReporteAvance, modifier: Modifier = Modifier)
                     )
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        reporte.retroalimentaciones.forEach { retro ->
-                            val fecha = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault())
-                                .format(Date(retro.fecha))
-                            Card(
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                )
-                            ) {
-                                Column(modifier = Modifier.padding(12.dp)) {
-                                    Text(
-                                        "📅 $fecha",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        retro.contenido,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
-                                }
-                            }
+                        reporte.retroalimentaciones.sortedByDescending { it.fecha }.forEach { retro ->
+                            RetroalimentacionCard(retroalimentacion = retro)
                         }
                     }
                 }
             }
+        }
+    }
+}
+
+// ✅ NUEVO: Componente específico para mostrar retroalimentaciones con datos del profesional
+@Composable
+private fun RetroalimentacionCard(retroalimentacion: Retroalimentacion) {
+    val fecha = SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault())
+        .format(Date(retroalimentacion.fecha))
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // ✅ MEJORADO: Mostrar nombre y rol del profesional
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Icono según el rol
+                    Text(
+                        when (retroalimentacion.rolProfesional.lowercase()) {
+                            "nutricionista" -> "🥗"
+                            "entrenador" -> "💪"
+                            "medico" -> "👨‍⚕️"
+                            else -> "👨‍💼"
+                        },
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(
+                            retroalimentacion.nombreProfesional.ifBlank { "Profesional" },
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Text(
+                            retroalimentacion.rolProfesional.replaceFirstChar { it.uppercase() }.ifBlank { "Profesional" },
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+
+                Text(
+                    fecha,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                retroalimentacion.contenido,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer
+            )
         }
     }
 }

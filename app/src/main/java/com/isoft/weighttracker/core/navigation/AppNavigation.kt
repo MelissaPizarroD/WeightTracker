@@ -35,9 +35,11 @@ import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import com.isoft.weighttracker.core.permissions.PermissionViewModel
 import com.isoft.weighttracker.feature.profesional.planes.ui.PlanesScreen
 import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
-import com.isoft.weighttracker.feature.profesional.ui.DatosProfesionalScreen
+import com.isoft.weighttracker.feature.profesional.datosProf.ui.DatosProfesionalScreen
 import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
+import com.isoft.weighttracker.feature.profesional.retroalimentacion.RetroalimentacionScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.DetalleReporteScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.GraficasAnaliticasScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.HistorialReportesScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.RegistrarReporteScreen
 import java.net.URLDecoder
@@ -90,6 +92,7 @@ fun AppNavigation(
             AsociarProfesionalScreen(navController)
         }
 
+        // === RUTAS DE REPORTES DE AVANCE (USUARIO) ===
         composable("historialReporte") {
             HistorialReportesScreen(navController)
         }
@@ -103,6 +106,11 @@ fun AppNavigation(
             DetalleReporteScreen(navController, reporteId = id)
         }
 
+        composable("graficasAnaliticas") {
+            GraficasAnaliticasScreen(navController)
+        }
+
+        // === RUTAS DE COMIDAS ===
         composable("historialComidas") {
             HistorialComidasScreen(navController, comidaViewModel)
         }
@@ -121,6 +129,7 @@ fun AppNavigation(
             RegistrarComidasScreen(navController, comida, comidaViewModel)
         }
 
+        // === RUTAS DE ACTIVIDAD FÍSICA ===
         composable("historialActividad") {
             HistorialActividadFisicaScreen(
                 navController = navController,
@@ -145,6 +154,7 @@ fun AppNavigation(
             RegistrarActividadFisicaScreen(navController, actividad, actividadFisicaViewModel)
         }
 
+        // === RUTAS DE ANTROPOMETRÍA ===
         composable("historialAntropometrico") {
             HistorialAntropometricoScreen(
                 navController = navController,
@@ -175,14 +185,16 @@ fun AppNavigation(
             )
         }
 
+        // === RUTAS DE METAS ===
         composable("historialMetas") {
             HistorialMetasScreen(navController)
         }
+
         composable("registrarMeta") {
             RegistrarMetaScreen(navController)
         }
 
-        //Profesionales
+        // === RUTAS PROFESIONALES ===
         composable("datosProfesional") {
             DatosProfesionalScreen(navController)
         }
@@ -191,9 +203,27 @@ fun AppNavigation(
             PlanesScreen(navController)
         }
 
-        composable("reportesClientes") {
-            ReportesScreen(navController)
+        // RUTA CORREGIDA: reporteAvance con parámetro role
+        composable("reporteAvance/{role}") { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: ""
+            ReportesScreen(navController, role)
         }
 
+        // === NUEVA RUTA: RETROALIMENTACIÓN ===
+        composable(
+            "retroalimentacion/{reporteId}/{usuarioId}",
+            arguments = listOf(
+                navArgument("reporteId") { type = NavType.StringType },
+                navArgument("usuarioId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val reporteId = backStackEntry.arguments?.getString("reporteId") ?: ""
+            val usuarioId = backStackEntry.arguments?.getString("usuarioId") ?: ""
+            RetroalimentacionScreen(
+                navController = navController,
+                reporteId = reporteId,
+                usuarioId = usuarioId
+            )
+        }
     }
 }

@@ -40,7 +40,7 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
     val menuItems = listOf(
         "Perfil Profesional" to "datosProfesional",
         "Planes Solicitados" to "planesSolicitados",
-        "Reportes de Avance" to "reporteAvance"
+        "Reportes de Avance" to "reporteAvance/$role"
     )
 
     LaunchedEffect(role) {

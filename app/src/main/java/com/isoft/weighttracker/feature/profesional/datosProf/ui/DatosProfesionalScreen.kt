@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.profesional.ui
+package com.isoft.weighttracker.feature.profesional.datosProf.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*

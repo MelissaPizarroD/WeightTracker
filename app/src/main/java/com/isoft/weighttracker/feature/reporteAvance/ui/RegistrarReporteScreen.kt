@@ -14,13 +14,18 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.isoft.weighttracker.core.notifications.ReportesNotificationHelper
 import com.isoft.weighttracker.feature.actividadfisica.viewmodel.ActividadFisicaViewModel
 import com.isoft.weighttracker.feature.antropometria.viewmodel.AntropometriaViewModel
 import com.isoft.weighttracker.feature.metas.viewmodel.MetasViewModel
 import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.TipoReporte
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
+import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -31,7 +36,8 @@ fun RegistrarReporteScreen(
     viewModel: ReporteAvanceViewModel = viewModel(),
     antropometriaVM: AntropometriaViewModel = viewModel(),
     actividadVM: ActividadFisicaViewModel = viewModel(),
-    metasVM: MetasViewModel = viewModel()
+    metasVM: MetasViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel() // ✅ AGREGADO: Para obtener datos del usuario
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -48,6 +54,7 @@ fun RegistrarReporteScreen(
     val progreso by metasVM.progreso.collectAsState()
     val estadoGuardado by viewModel.estadoGuardado.collectAsState()
     val error by viewModel.error.collectAsState()
+    val currentUser by userViewModel.currentUser.collectAsState() // ✅ AGREGADO
 
     // Cargar datos al inicio
     LaunchedEffect(Unit) {
@@ -56,6 +63,7 @@ fun RegistrarReporteScreen(
         actividadVM.cargarHistorialPasos()
         metasVM.cargarMetaActiva()
         metasVM.cargarProgreso()
+        userViewModel.loadUser() // ✅ AGREGADO: Cargar datos del usuario
     }
 
     // Calcular fechas según el tipo de reporte
@@ -88,10 +96,85 @@ fun RegistrarReporteScreen(
         .filter { it.fecha in fechaInicio..fechaFin }
         .maxByOrNull { it.fecha }
 
-    // Manejo de estados
+    // 🎯 FUNCIÓN PARA BUSCAR PROFESIONALES ASOCIADOS Y NOTIFICARLOS
+    suspend fun notificarProfesionalesAsociados(reporteId: String, tipoReporte: TipoReporte) {
+        try {
+            val auth = FirebaseAuth.getInstance()
+            val db = FirebaseFirestore.getInstance()
+            val uid = auth.currentUser?.uid ?: return
+
+            // Buscar profesionales asociados al usuario
+            val profesionalesSnapshot = db.collection("profesional_usuario_relations")
+                .whereEqualTo("usuarioId", uid)
+                .whereEqualTo("estado", "activo")
+                .get()
+                .await()
+
+            val profesionalesAsociados = profesionalesSnapshot.documents.size
+
+            // Notificar cada profesional asociado
+            profesionalesSnapshot.documents.forEach { document ->
+                val profesionalId = document.getString("profesionalId")
+                if (profesionalId != null) {
+                    // Obtener datos del profesional
+                    val profesionalDoc = db.collection("users")
+                        .document(profesionalId)
+                        .get()
+                        .await()
+
+                    if (profesionalDoc.exists()) {
+                        // 🔔 Crear notificación para el profesional
+                        ReportesNotificationHelper.notificarProfesionalNuevoReporte(
+                            context = context,
+                            nombreUsuario = currentUser?.name ?: "Usuario",
+                            tipoReporte = tipoReporte,
+                            reporteId = reporteId
+                        )
+                    }
+                }
+            }
+
+            // 📊 Notificar al usuario que su reporte fue creado
+            ReportesNotificationHelper.notificarReporteCreado(
+                context = context,
+                tipoReporte = tipoReporte,
+                reporteId = reporteId,
+                profesionalesAsociados = profesionalesAsociados
+            )
+        } catch (e: Exception) {
+            // En caso de error, solo notificar la creación del reporte
+            ReportesNotificationHelper.notificarReporteCreado(
+                context = context,
+                tipoReporte = tipoReporte,
+                reporteId = reporteId,
+                profesionalesAsociados = 0
+            )
+        }
+    }
+
+    // Manejo de estados con notificaciones
     LaunchedEffect(estadoGuardado) {
         when (estadoGuardado) {
             true -> {
+                // 🎯 CREAR Y ENVIAR NOTIFICACIONES
+                val nuevoReporte = ReporteAvance(
+                    fechaCreacion = System.currentTimeMillis(),
+                    fechaInicio = fechaInicio,
+                    fechaFin = fechaFin,
+                    tipoReporte = tipoReporteSeleccionado,
+                    antropometria = antropometriaReciente?.let { listOf(it) } ?: emptyList(),
+                    metaActiva = metaActiva,
+                    progresoMeta = progreso,
+                    caloriasConsumidas = 0,
+                    caloriasQuemadas = caloriasQuemadas,
+                    pasosTotales = totalPasos
+                )
+
+                // Notificar a profesionales asociados
+                scope.launch {
+                    notificarProfesionalesAsociados(nuevoReporte.id, tipoReporteSeleccionado)
+                }
+
                 Toast.makeText(context, "Reporte guardado exitosamente ✅", Toast.LENGTH_SHORT).show()
                 viewModel.limpiarEstadoGuardado()
                 navController.popBackStack()
@@ -193,6 +276,36 @@ fun RegistrarReporteScreen(
                 }
             }
 
+            // 🔔 NUEVA SECCIÓN: Información sobre notificaciones
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "🔔 Notificaciones",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "• Se te notificará cuando el reporte se guarde exitosamente",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        "• Los profesionales asociados recibirán una notificación del nuevo reporte",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                    Text(
+                        "• Recibirás notificaciones cuando agreguen retroalimentaciones",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                }
+            }
+
             // Advertencia si no hay datos suficientes
             val hayDatos = listOfNotNull(
                 antropometriaReciente,
@@ -221,7 +334,7 @@ fun RegistrarReporteScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Botón para guardar
+            // Botón para guardar con indicador de notificaciones
             Button(
                 onClick = {
                     if (!isLoading) {
@@ -251,8 +364,16 @@ fun RegistrarReporteScreen(
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(8.dp))
+                    Text("Guardando y notificando...")
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Guardar Reporte")
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("🔔", style = MaterialTheme.typography.bodyMedium)
+                    }
                 }
-                Text(if (isLoading) "Guardando..." else "Guardar Reporte")
             }
         }
     }

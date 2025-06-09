@@ -4,12 +4,14 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,11 +35,12 @@ fun HistorialReportesScreen(
 ) {
     val historial by viewModel.historial.collectAsState()
     val error by viewModel.error.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var filtroTipo by remember { mutableStateOf<TipoReporte?>(null) }
     var mostrarFiltros by remember { mutableStateOf(false) }
-    var mostrarGraficas by remember { mutableStateOf(true) }
+    var mostrarDebugInfo by remember { mutableStateOf(false) }
 
     // Filtrar reportes según el tipo seleccionado
     val reportesFiltrados = remember(historial, filtroTipo) {
@@ -47,6 +50,10 @@ fun HistorialReportesScreen(
             historial.filter { it.tipoReporte == filtroTipo }
         }
     }
+
+    // Calcular estadísticas para debugging
+    val reportesConRetro = reportesFiltrados.count { it.retroalimentaciones.isNotEmpty() }
+    val totalRetroalimentaciones = reportesFiltrados.sumOf { it.retroalimentaciones.size }
 
     LaunchedEffect(Unit) {
         viewModel.cargarHistorial()
@@ -62,13 +69,66 @@ fun HistorialReportesScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Historial de Reportes") },
+                title = {
+                    Column {
+                        Text("Historial de Reportes")
+                        if (mostrarDebugInfo) {
+                            Text(
+                                "Total: ${reportesFiltrados.size} | Con retro: $reportesConRetro | Retros: $totalRetroalimentaciones",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Volver")
                     }
                 },
                 actions = {
+                    // Debug toggle
+                    IconButton(onClick = { mostrarDebugInfo = !mostrarDebugInfo }) {
+                        Icon(
+                            Icons.Default.BugReport,
+                            contentDescription = "Debug",
+                            tint = if (mostrarDebugInfo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    IconButton(onClick = {
+                        navController.navigate("graficasAnaliticas")
+                    }) {
+                        Icon(Icons.Default.Assessment, contentDescription = "Análisis Gráfico")
+                    }
+
+                    // Actualización desde servidor
+                    IconButton(
+                        onClick = {
+                            viewModel.forzarActualizacionCompleta()
+                        },
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Icon(Icons.Default.CloudSync, contentDescription = "Forzar desde servidor")
+                        }
+                    }
+
+                    // Actualización manual
+                    IconButton(
+                        onClick = {
+                            viewModel.actualizarHistorial()
+                        },
+                        enabled = !isLoading
+                    ) {
+                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                    }
+
                     IconButton(onClick = { mostrarFiltros = !mostrarFiltros }) {
                         Icon(Icons.Default.FilterList, contentDescription = "Filtros")
                     }
@@ -90,6 +150,69 @@ fun HistorialReportesScreen(
                 .padding(padding)
                 .fillMaxSize()
         ) {
+            // Debug info panel
+            if (mostrarDebugInfo) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Text(
+                            "🐛 Info de Debug",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text("• Total reportes: ${reportesFiltrados.size}", style = MaterialTheme.typography.bodySmall)
+                        Text("• Con retroalimentaciones: $reportesConRetro", style = MaterialTheme.typography.bodySmall)
+                        Text("• Total retroalimentaciones: $totalRetroalimentaciones", style = MaterialTheme.typography.bodySmall)
+                        Text("• Cargando: $isLoading", style = MaterialTheme.typography.bodySmall)
+                        if (error != null) {
+                            Text("• Error: $error", style = MaterialTheme.typography.bodySmall, color = Color.Red)
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            TextButton(onClick = { navController.navigate("debugReportes") }) {
+                                Text("Ver Debug Completo", style = MaterialTheme.typography.bodySmall)
+                            }
+                            TextButton(onClick = { viewModel.ejecutarDiagnostico() }) {
+                                Text("Diagnóstico", style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Banner de retroalimentaciones
+            if (reportesConRetro > 0) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("💬", style = MaterialTheme.typography.titleMedium)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            "Tienes $reportesConRetro reportes con $totalRetroalimentaciones retroalimentaciones",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
+
             // Panel de filtros
             if (mostrarFiltros) {
                 Card(
@@ -98,24 +221,63 @@ fun HistorialReportesScreen(
                         .padding(horizontal = 16.dp, vertical = 8.dp)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("Filtrar por tipo:", style = MaterialTheme.typography.titleSmall)
+                        Text("Filtrar reportes por tipo:", style = MaterialTheme.typography.titleSmall)
                         Spacer(modifier = Modifier.height(8.dp))
 
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        var expanded by remember { mutableStateOf(false) }
+
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
                         ) {
-                            FilterChip(
-                                onClick = { filtroTipo = null },
-                                label = { Text("Todos") },
-                                selected = filtroTipo == null
+                            OutlinedTextField(
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .fillMaxWidth(),
+                                readOnly = true,
+                                value = filtroTipo?.let { tipo ->
+                                    when (tipo) {
+                                        TipoReporte.DIARIO -> "Reportes Diarios"
+                                        TipoReporte.SEMANAL -> "Reportes Semanales"
+                                        TipoReporte.QUINCENAL -> "Reportes Quincenales"
+                                        TipoReporte.MENSUAL -> "Reportes Mensuales"
+                                    }
+                                } ?: "Todos los Reportes",
+                                onValueChange = {},
+                                label = { Text("Tipo de Reporte") },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) }
                             )
-                            TipoReporte.values().forEach { tipo ->
-                                FilterChip(
-                                    onClick = { filtroTipo = if (filtroTipo == tipo) null else tipo },
-                                    label = { Text(tipo.name) },
-                                    selected = filtroTipo == tipo
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text("Todos los Reportes") },
+                                    onClick = {
+                                        filtroTipo = null
+                                        expanded = false
+                                    }
                                 )
+
+                                TipoReporte.values().forEach { tipo ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                when (tipo) {
+                                                    TipoReporte.DIARIO -> "Reportes Diarios"
+                                                    TipoReporte.SEMANAL -> "Reportes Semanales"
+                                                    TipoReporte.QUINCENAL -> "Reportes Quincenales"
+                                                    TipoReporte.MENSUAL -> "Reportes Mensuales"
+                                                }
+                                            )
+                                        },
+                                        onClick = {
+                                            filtroTipo = tipo
+                                            expanded = false
+                                        }
+                                    )
+                                }
                             }
                         }
                     }
@@ -123,7 +285,7 @@ fun HistorialReportesScreen(
             }
 
             // Contenido principal
-            if (reportesFiltrados.isEmpty()) {
+            if (reportesFiltrados.isEmpty() && !isLoading) {
                 // Estado vacío
                 Card(
                     modifier = Modifier
@@ -151,6 +313,13 @@ fun HistorialReportesScreen(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+
+                            if (mostrarDebugInfo) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Button(onClick = { navController.navigate("debugReportes") }) {
+                                    Text("Ir a Debug Screen")
+                                }
+                            }
                         }
                     }
                 }
@@ -161,7 +330,7 @@ fun HistorialReportesScreen(
                     contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     // Gráfica de resumen si hay datos
-                    if (mostrarGraficas && reportesFiltrados.isNotEmpty()) {
+                    if (reportesFiltrados.isNotEmpty()) {
                         item {
                             GraficaResumenCard(reportes = reportesFiltrados)
                         }
@@ -169,9 +338,14 @@ fun HistorialReportesScreen(
 
                     // Lista de reportes
                     items(reportesFiltrados) { reporte ->
-                        ReporteCard(reporte = reporte, onClick = {
-                            navController.navigate("detalleReporte/${reporte.id}")
-                        })
+                        ReporteCard(
+                            reporte = reporte,
+                            onClick = {
+                                navController.navigate("detalleReporte/${reporte.id}")
+                            },
+                            tieneRetroalimentaciones = reporte.retroalimentaciones.isNotEmpty(),
+                            mostrarDebugInfo = mostrarDebugInfo
+                        )
                     }
                 }
             }
@@ -180,7 +354,12 @@ fun HistorialReportesScreen(
 }
 
 @Composable
-fun ReporteCard(reporte: ReporteAvance, onClick: () -> Unit) {
+fun ReporteCard(
+    reporte: ReporteAvance,
+    onClick: () -> Unit,
+    tieneRetroalimentaciones: Boolean = false,
+    mostrarDebugInfo: Boolean = false
+) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val fechaInicio = sdf.format(Date(reporte.fechaInicio))
     val fechaFin = sdf.format(Date(reporte.fechaFin))
@@ -189,9 +368,24 @@ fun ReporteCard(reporte: ReporteAvance, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clickable { onClick() },
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+        colors = CardDefaults.cardColors(
+            containerColor = if (tieneRetroalimentaciones)
+                MaterialTheme.colorScheme.secondaryContainer
+            else
+                MaterialTheme.colorScheme.surfaceVariant
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
+            // Debug info si está activado
+            if (mostrarDebugInfo) {
+                Text(
+                    "ID: ${reporte.id}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -202,16 +396,34 @@ fun ReporteCard(reporte: ReporteAvance, onClick: () -> Unit) {
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Surface(
-                    color = MaterialTheme.colorScheme.primary,
-                    shape = MaterialTheme.shapes.small
-                ) {
-                    Text(
-                        reporte.tipoReporte.name,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Indicador de retroalimentaciones
+                    if (tieneRetroalimentaciones) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = MaterialTheme.shapes.small
+                        ) {
+                            Text(
+                                "💬 ${reporte.retroalimentaciones.size}",
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+
+                    Surface(
+                        color = MaterialTheme.colorScheme.primary,
+                        shape = MaterialTheme.shapes.small
+                    ) {
+                        Text(
+                            reporte.tipoReporte.name,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             }
 
@@ -235,6 +447,30 @@ fun ReporteCard(reporte: ReporteAvance, onClick: () -> Unit) {
                 val ant = reporte.antropometria.first()
                 Spacer(modifier = Modifier.height(4.dp))
                 Text("📏 Peso: ${ant.peso}kg | Grasa: ${ant.porcentajeGrasa}%")
+            }
+
+            // Mostrar texto sobre retroalimentaciones
+            if (tieneRetroalimentaciones) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "✨ Este reporte tiene ${reporte.retroalimentaciones.size} retroalimentación(es) de tu profesional - Toca para ver",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+
+                // Mostrar preview de la última retroalimentación si debug está activado
+                if (mostrarDebugInfo && reporte.retroalimentaciones.isNotEmpty()) {
+                    val ultimaRetro = reporte.retroalimentaciones.maxByOrNull { it.fecha }
+                    if (ultimaRetro != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Última: ${ultimaRetro.contenido.take(100)}...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
@@ -261,6 +497,7 @@ fun GraficaResumenCard(reportes: List<ReporteAvance>) {
             val promedioProgreso = reportes.mapNotNull { it.progresoMeta?.porcentajeProgreso }.average()
             val pesoActual = reportes.firstOrNull()?.antropometria?.firstOrNull()?.peso
             val pesoAnterior = reportes.lastOrNull()?.antropometria?.firstOrNull()?.peso
+            val reportesConRetroalimentacion = reportes.count { it.retroalimentaciones.isNotEmpty() }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -280,6 +517,16 @@ fun GraficaResumenCard(reportes: List<ReporteAvance>) {
                     titulo = "Progreso Prom.",
                     valor = if (promedioProgreso.isNaN()) "N/A" else "%.1f%%".format(promedioProgreso),
                     icono = "📊"
+                )
+            }
+
+            // Mostrar estadística de retroalimentaciones
+            if (reportesConRetroalimentacion > 0) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "💬 $reportesConRetroalimentacion reportes con retroalimentación de profesionales",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
 
