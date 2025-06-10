@@ -18,6 +18,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.feature.reporteAvance.model.Retroalimentacion
+import com.isoft.weighttracker.feature.reporteAvance.ui.DatoAntropometrico
 import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -325,13 +326,35 @@ private fun DetalleReporteParaProfesional(
 
                 if (reporte.antropometria.isNotEmpty()) {
                     val ant = reporte.antropometria.first()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        DatoAntropometricoProfesional("Peso", "${ant.peso} kg", "⚖️")
-                        DatoAntropometricoProfesional("Grasa", "${ant.porcentajeGrasa}%", "📊")
-                        DatoAntropometricoProfesional("Cintura", "${ant.cintura} cm", "📐")
+
+                    // ✅ NUEVO: Verificar si tiene cadera (es mujer)
+                    if (ant.cadera != null) {
+                        // Para mujeres: mostrar en dos filas
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Peso", "${ant.peso} kg", "⚖️")
+                            DatoAntropometrico("Grasa", "${ant.porcentajeGrasa}%", "📊")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Cintura", "${ant.cintura} cm", "📐")
+                            DatoAntropometrico("Cadera", "${ant.cadera} cm", "📏")
+                        }
+                    } else {
+                        // Para hombres: mostrar en una fila (sin cadera)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Peso", "${ant.peso} kg", "⚖️")
+                            DatoAntropometrico("Grasa", "${ant.porcentajeGrasa}%", "📊")
+                            DatoAntropometrico("Cintura", "${ant.cintura} cm", "📐")
+                        }
                     }
                 } else {
                     Text(

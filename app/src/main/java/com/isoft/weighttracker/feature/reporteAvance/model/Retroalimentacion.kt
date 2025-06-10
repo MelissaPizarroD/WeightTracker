@@ -3,13 +3,24 @@ package com.isoft.weighttracker.feature.reporteAvance.model
 import java.util.UUID
 
 data class Retroalimentacion(
-    val id: String = UUID.randomUUID().toString(),
-    val fecha: Long = System.currentTimeMillis(),
-    val idProfesional: String = "",
-    val contenido: String = "",
+    var id: String = UUID.randomUUID().toString(),
+    var fecha: Long = System.currentTimeMillis(),
+    var idProfesional: String = "",
+    var contenido: String = "",
 
     // ✅ NUEVOS CAMPOS para mostrar datos del profesional
-    val nombreProfesional: String = "",
-    val rolProfesional: String = "", // "nutricionista", "entrenador", etc.
-    val emailProfesional: String = "" // opcional, por si quieres mostrarlo
-)
+    var nombreProfesional: String = "",
+    var rolProfesional: String = "", // "nutricionista", "entrenador", etc.
+    var emailProfesional: String = "" // opcional, por si quieres mostrarlo
+) {
+    // Constructor sin argumentos para Firebase
+    constructor() : this(
+        id = UUID.randomUUID().toString(),
+        fecha = System.currentTimeMillis(),
+        idProfesional = "",
+        contenido = "",
+        nombreProfesional = "",
+        rolProfesional = "",
+        emailProfesional = ""
+    )
+}

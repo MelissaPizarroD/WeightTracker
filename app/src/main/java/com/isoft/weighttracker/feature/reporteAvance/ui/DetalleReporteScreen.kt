@@ -312,13 +312,35 @@ fun DetalleReporteContent(
 
                 if (reporte.antropometria.isNotEmpty()) {
                     val ant = reporte.antropometria.first()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceEvenly
-                    ) {
-                        DatoAntropometrico("Peso", "${ant.peso} kg", "⚖️")
-                        DatoAntropometrico("Grasa", "${ant.porcentajeGrasa}%", "📊")
-                        DatoAntropometrico("Cintura", "${ant.cintura} cm", "📐")
+
+                    // ✅ NUEVO: Verificar si tiene cadera (es mujer)
+                    if (ant.cadera != null) {
+                        // Para mujeres: mostrar en dos filas
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Peso", "${ant.peso} kg", "⚖️")
+                            DatoAntropometrico("Grasa", "${ant.porcentajeGrasa}%", "📊")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Cintura", "${ant.cintura} cm", "📐")
+                            DatoAntropometrico("Cadera", "${ant.cadera} cm", "📏")
+                        }
+                    } else {
+                        // Para hombres: mostrar en una fila (sin cadera)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            DatoAntropometrico("Peso", "${ant.peso} kg", "⚖️")
+                            DatoAntropometrico("Grasa", "${ant.porcentajeGrasa}%", "📊")
+                            DatoAntropometrico("Cintura", "${ant.cintura} cm", "📐")
+                        }
                     }
                 } else {
                     Text(
@@ -458,41 +480,48 @@ private fun RetroalimentacionCard(retroalimentacion: Retroalimentacion) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
-                // ✅ MEJORADO: Mostrar nombre y rol del profesional
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // Icono según el rol
+                // ✅ MEJORADO: Estructura reorganizada para alinear emoji con nombre
+                Column {
+                    // Fecha sola arriba
                     Text(
-                        when (retroalimentacion.rolProfesional.lowercase()) {
-                            "nutricionista" -> "🥗"
-                            "entrenador" -> "💪"
-                            "medico" -> "👨‍⚕️"
-                            else -> "👨‍💼"
-                        },
-                        style = MaterialTheme.typography.titleMedium
+                        fecha,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
                     )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column {
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // ✅ NUEVO: Emoji alineado con el nombre
+                    Row(verticalAlignment = Alignment.CenterVertically) {
                         Text(
-                            retroalimentacion.nombreProfesional.ifBlank { "Profesional" },
-                            style = MaterialTheme.typography.labelLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                            when (retroalimentacion.rolProfesional.lowercase()) {
+                                "nutricionista" -> "🥗"
+                                "entrenador" -> "💪"
+                                "medico" -> "👨‍⚕️"
+                                else -> "👨‍💼"
+                            },
+                            style = MaterialTheme.typography.titleMedium
                         )
-                        Text(
-                            retroalimentacion.rolProfesional.replaceFirstChar { it.uppercase() }.ifBlank { "Profesional" },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSecondaryContainer
-                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(
+                                retroalimentacion.nombreProfesional.ifBlank { "Profesional" },
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                retroalimentacion.rolProfesional.replaceFirstChar { it.uppercase() }.ifBlank { "Profesional" },
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
                     }
                 }
 
-                Text(
-                    fecha,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
-                )
+                // Espacio para mantener el layout
+                Spacer(modifier = Modifier.width(8.dp))
             }
 
             Spacer(modifier = Modifier.height(8.dp))

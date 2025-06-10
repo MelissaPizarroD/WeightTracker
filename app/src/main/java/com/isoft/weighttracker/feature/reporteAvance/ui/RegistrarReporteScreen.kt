@@ -20,6 +20,7 @@ import com.isoft.weighttracker.feature.metas.viewmodel.MetasViewModel
 import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.TipoReporte
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
+import com.isoft.weighttracker.shared.UserViewModel // ✅ NUEVO: Import del UserViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -31,7 +32,8 @@ fun RegistrarReporteScreen(
     viewModel: ReporteAvanceViewModel = viewModel(),
     antropometriaVM: AntropometriaViewModel = viewModel(),
     actividadVM: ActividadFisicaViewModel = viewModel(),
-    metasVM: MetasViewModel = viewModel()
+    metasVM: MetasViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel() // ✅ NUEVO: Agregar UserViewModel
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -39,6 +41,7 @@ fun RegistrarReporteScreen(
     // Estados
     var tipoReporteSeleccionado by remember { mutableStateOf(TipoReporte.SEMANAL) }
     var isLoading by remember { mutableStateOf(false) }
+    var datosCompletos by remember { mutableStateOf(false) }
 
     // Observar estados
     val antropometria by antropometriaVM.registros.collectAsState()
@@ -49,13 +52,78 @@ fun RegistrarReporteScreen(
     val estadoGuardado by viewModel.estadoGuardado.collectAsState()
     val error by viewModel.error.collectAsState()
 
-    // Cargar datos al inicio
+    // ✅ NUEVO: Obtener perfil del usuario para el sexo
+    val personaProfile by userViewModel.personaProfile.collectAsState()
+
+    // ✅ FUNCIÓN PARA CARGAR TODOS LOS DATOS
+    val cargarTodosLosDatos = {
+        scope.launch {
+            try {
+                isLoading = true
+                datosCompletos = false
+
+                println("🚀 === INICIANDO CARGA COMPLETA DE DATOS ===")
+
+                // Cargar todos los datos de forma secuencial y esperar a que terminen
+                println("📥 Cargando antropometría...")
+                antropometriaVM.cargarRegistros()
+
+                println("📥 Cargando actividades...")
+                actividadVM.cargarActividades()
+
+                println("📥 Cargando historial de pasos...")
+                actividadVM.cargarHistorialPasos()
+
+                println("📥 Cargando perfil de usuario...")
+                // ✅ NUEVO: Cargar perfil del usuario
+                userViewModel.loadPersonaProfile()
+
+                println("📥 Cargando meta activa...")
+                // ✅ IMPORTANTE: Cargar la meta activa y esperar
+                metasVM.cargarMetaActiva()
+
+                // ✅ CRUCIAL: Pequeña pausa para asegurar que la meta se cargue antes del progreso
+                kotlinx.coroutines.delay(1000) // Aumentamos el delay
+
+                println("📥 Verificando meta activa cargada...")
+                val metaVerificacion = metaActiva
+                println("🔍 Meta activa después de cargar: $metaVerificacion")
+                println("🔍 Meta objetivo: ${metaVerificacion?.objetivo}")
+                println("🔍 Meta ID: ${metaVerificacion?.id}")
+
+                println("📥 Cargando progreso...")
+                // ✅ IMPORTANTE: Cargar el progreso después de la meta
+                metasVM.cargarProgreso()
+
+                // ✅ NUEVA: Pequeña pausa final para asegurar que todos los datos estén disponibles
+                kotlinx.coroutines.delay(500)
+
+                println("📥 Verificando progreso cargado...")
+                val progresoVerificacion = progreso
+                println("🔍 Progreso después de cargar: $progresoVerificacion")
+                println("🔍 Porcentaje progreso: ${progresoVerificacion?.porcentajeProgreso}")
+
+                datosCompletos = true
+                isLoading = false
+                println("✅ === CARGA COMPLETA FINALIZADA ===")
+            } catch (e: Exception) {
+                isLoading = false
+                println("❌ Error en carga completa: ${e.message}")
+                Toast.makeText(context, "Error al cargar datos: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // ✅ MEJORADO: Cargar datos al inicio y cuando cambie el tipo de reporte
     LaunchedEffect(Unit) {
-        antropometriaVM.cargarRegistros()
-        actividadVM.cargarActividades()
-        actividadVM.cargarHistorialPasos()
-        metasVM.cargarMetaActiva()
-        metasVM.cargarProgreso()
+        cargarTodosLosDatos()
+    }
+
+    // ✅ NUEVO: Recargar datos cuando cambie el tipo de reporte
+    LaunchedEffect(tipoReporteSeleccionado) {
+        if (datosCompletos) {
+            cargarTodosLosDatos()
+        }
     }
 
     // Calcular fechas según el tipo de reporte
@@ -127,7 +195,24 @@ fun RegistrarReporteScreen(
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
                     navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
                     actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                ),
+                actions = {
+                    // ✅ NUEVO: Botón para recargar datos manualmente
+                    IconButton(
+                        onClick = { cargarTodosLosDatos() },
+                        enabled = !isLoading
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                        } else {
+                            Text("🔄", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+                }
             )
         }
     ) { padding ->
@@ -138,6 +223,24 @@ fun RegistrarReporteScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ✅ NUEVO: Indicador de carga de datos
+            if (isLoading || !datosCompletos) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text("Cargando datos para el reporte...")
+                    }
+                }
+            }
+
             // Selector de tipo de reporte
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -154,14 +257,23 @@ fun RegistrarReporteScreen(
                                 .fillMaxWidth()
                                 .selectable(
                                     selected = (tipoReporteSeleccionado == tipo),
-                                    onClick = { tipoReporteSeleccionado = tipo }
+                                    onClick = {
+                                        if (!isLoading) {
+                                            tipoReporteSeleccionado = tipo
+                                        }
+                                    }
                                 )
                                 .padding(vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
                                 selected = (tipoReporteSeleccionado == tipo),
-                                onClick = { tipoReporteSeleccionado = tipo }
+                                onClick = {
+                                    if (!isLoading) {
+                                        tipoReporteSeleccionado = tipo
+                                    }
+                                },
+                                enabled = !isLoading
                             )
                             Text(
                                 text = when (tipo) {
@@ -170,7 +282,9 @@ fun RegistrarReporteScreen(
                                     TipoReporte.QUINCENAL -> "Quincenal (últimos 15 días)"
                                     TipoReporte.MENSUAL -> "Mensual (últimos 30 días)"
                                 },
-                                modifier = Modifier.padding(start = 8.dp)
+                                modifier = Modifier.padding(start = 8.dp),
+                                color = if (isLoading) MaterialTheme.colorScheme.onSurfaceVariant
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }
@@ -185,28 +299,53 @@ fun RegistrarReporteScreen(
                 fontWeight = FontWeight.Bold
             )
 
-            // Resumen de datos
+            // ✅ MEJORADO: Resumen de datos con estado de carga
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("📊 Resumen de Datos", style = MaterialTheme.typography.titleMedium)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("📊 Resumen de Datos", style = MaterialTheme.typography.titleMedium)
+
+                        // ✅ NUEVO: Indicador de estado de los datos
+                        if (datosCompletos && !isLoading) {
+                            Text("✅", style = MaterialTheme.typography.titleMedium)
+                        }
+                    }
+
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text("🔥 Calorías quemadas: ${if (caloriasQuemadas > 0) caloriasQuemadas else "No disponible"}")
                     Text("🚶‍♂️ Pasos totales: ${if (totalPasos > 0) "%,d".format(totalPasos) else "No disponible"}")
-                    Text("🎯 Meta activa: ${metaActiva?.objetivo ?: "Sin meta activa"}")
+
+                    // ✅ MEJORADO: Mostrar información más detallada de la meta
+                    metaActiva?.let { meta ->
+                        Text("🎯 Meta activa: ${meta.objetivo} (${meta.pesoInicial}kg → ${meta.pesoObjetivo}kg)")
+                        // ✅ NUEVO: Mostrar progreso si está disponible
+                        progreso?.let { prog ->
+                            Text("📊 Progreso meta: ${"%.1f".format(prog.porcentajeProgreso)}% (${prog.pesoActual}kg actual)")
+                        } ?: Text("📊 Progreso meta: Calculando...")
+                    } ?: run {
+                        Text("🎯 Meta activa: Sin meta activa")
+                        Text("📊 Progreso meta: Sin progreso")
+                    }
+
                     Text("📏 Antropometría: ${if (antropometriaReciente != null) "Peso: ${antropometriaReciente.peso}kg" else "No disponible"}")
-                    Text("📊 Progreso meta: ${progreso?.porcentajeProgreso?.let { "%.1f%%".format(it) } ?: "Sin progreso"}")
                 }
             }
 
-            // Advertencia si no hay datos suficientes
+            // ✅ MEJORADO: Advertencia si no hay datos suficientes
+            val metaActivaLocal = metaActiva
+            val progresoLocal = progreso
             val hayDatos = listOfNotNull(
                 antropometriaReciente,
-                metaActiva,
-                progreso
+                metaActivaLocal,
+                progresoLocal
             ).isNotEmpty() || caloriasQuemadas > 0 || totalPasos > 0
 
-            if (!hayDatos) {
+            if (!hayDatos && datosCompletos) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                 ) {
@@ -227,29 +366,62 @@ fun RegistrarReporteScreen(
 
             Spacer(modifier = Modifier.weight(1f))
 
-            // Botón para guardar
+            // ✅ MEJORADO: Botón para guardar con validación mejorada
             Button(
                 onClick = {
-                    if (!isLoading) {
+                    if (!isLoading && datosCompletos) {
                         isLoading = true
+
+                        // ✅ NUEVA: Capturar valores locales para evitar problemas de smart cast
+                        val metaActivaLocal = metaActiva
+                        val progresoLocal = progreso
+
+                        // ✅ NUEVO: Debug extensivo antes de crear el reporte
+                        println("🔍 === DEBUG ANTES DE CREAR REPORTE ===")
+                        println("🔍 Meta activa local: $metaActivaLocal")
+                        println("🔍 Meta objetivo: ${metaActivaLocal?.objetivo}")
+                        println("🔍 Meta ID: ${metaActivaLocal?.id}")
+                        println("🔍 Meta activa flag: ${metaActivaLocal?.activa}")
+                        println("🔍 Meta cumplida flag: ${metaActivaLocal?.cumplida}")
+                        println("🔍 Progreso local: $progresoLocal")
+                        println("🔍 Porcentaje progreso: ${progresoLocal?.porcentajeProgreso}")
+                        println("🔍 Peso actual: ${progresoLocal?.pesoActual}")
+                        println("🔍 === FIN DEBUG ANTES DE CREAR REPORTE ===")
+
+                        // ✅ NUEVA: Validación adicional antes de crear el reporte
+                        val reporteValido = metaActivaLocal != null || caloriasQuemadas > 0 || totalPasos > 0 || antropometriaReciente != null
+
+                        if (!reporteValido) {
+                            Toast.makeText(context, "No hay datos suficientes para crear el reporte", Toast.LENGTH_SHORT).show()
+                            isLoading = false
+                            return@Button
+                        }
+
                         val nuevoReporte = ReporteAvance(
                             fechaCreacion = System.currentTimeMillis(),
                             fechaInicio = fechaInicio,
                             fechaFin = fechaFin,
                             tipoReporte = tipoReporteSeleccionado,
                             antropometria = antropometriaReciente?.let { listOf(it) } ?: emptyList(),
-                            metaActiva = metaActiva,
-                            progresoMeta = progreso,
+                            metaActiva = metaActivaLocal, // ✅ Ahora debería tener la meta activa
+                            progresoMeta = progresoLocal, // ✅ Ahora debería tener el progreso
                             caloriasConsumidas = 0, // Puedes implementar esto más tarde
                             caloriasQuemadas = caloriasQuemadas,
-                            pasosTotales = totalPasos
+                            pasosTotales = totalPasos,
+                            sexoUsuario = personaProfile?.sexo ?: "" // ✅ NUEVO: Incluir sexo del usuario
                         )
+
+                        // ✅ NUEVO: Log para debug
+                        println("🔍 DEBUG - Guardando reporte:")
+                        println("   Meta activa: ${nuevoReporte.metaActiva?.objetivo}")
+                        println("   Progreso: ${nuevoReporte.progresoMeta?.porcentajeProgreso}")
+                        println("   Antropometría: ${nuevoReporte.antropometria.size} registros")
 
                         viewModel.guardarReporte(nuevoReporte)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
+                enabled = !isLoading && datosCompletos
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -258,7 +430,13 @@ fun RegistrarReporteScreen(
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                 }
-                Text(if (isLoading) "Guardando..." else "Guardar Reporte")
+                Text(
+                    when {
+                        isLoading -> "Guardando..."
+                        !datosCompletos -> "Cargando datos..."
+                        else -> "Guardar Reporte"
+                    }
+                )
             }
         }
     }

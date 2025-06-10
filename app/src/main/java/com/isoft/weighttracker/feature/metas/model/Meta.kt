@@ -1,13 +1,26 @@
 package com.isoft.weighttracker.feature.metas.model
 
 data class Meta(
-    val id: String? = null,
-    val pesoInicial: Float = 0f, // Calculado automáticamente al crearla
-    val pesoObjetivo: Float = 0f,
-    val fechaInicio: Long = System.currentTimeMillis(),
-    val fechaLimite: Long = 0L,
-    val objetivo: String = "",
-    val cumplida: Boolean = false,
-    val activa: Boolean = true, // Nueva propiedad para controlar si la meta está activa
-    val vencida: Boolean = false // Nueva propiedad para metas vencidas
-)
+    var id: String? = null,
+    var pesoInicial: Float = 0f, // Calculado automáticamente al crearla
+    var pesoObjetivo: Float = 0f,
+    var fechaInicio: Long = System.currentTimeMillis(),
+    var fechaLimite: Long = 0L,
+    var objetivo: String = "",
+    var cumplida: Boolean = false,
+    var activa: Boolean = true, // Nueva propiedad para controlar si la meta está activa
+    var vencida: Boolean = false // Nueva propiedad para metas vencidas
+) {
+    // Constructor sin argumentos para Firebase
+    constructor() : this(
+        id = null,
+        pesoInicial = 0f,
+        pesoObjetivo = 0f,
+        fechaInicio = System.currentTimeMillis(),
+        fechaLimite = 0L,
+        objetivo = "",
+        cumplida = false,
+        activa = true,
+        vencida = false
+    )
+}

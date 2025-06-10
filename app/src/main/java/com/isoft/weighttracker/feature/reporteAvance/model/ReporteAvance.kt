@@ -9,22 +9,42 @@ enum class TipoReporte {
 }
 
 data class ReporteAvance(
-    val id: String = "",
-    val fechaCreacion: Long = System.currentTimeMillis(),
-    val fechaInicio: Long = 0L,
-    val fechaFin: Long = 0L,
-    val tipoReporte: TipoReporte = TipoReporte.SEMANAL,
+    var id: String = "",
+    var fechaCreacion: Long = System.currentTimeMillis(),
+    var fechaInicio: Long = 0L,
+    var fechaFin: Long = 0L,
+    var tipoReporte: TipoReporte = TipoReporte.SEMANAL,
 
-    val antropometria: List<Antropometria> = emptyList(),
-    val metaActiva: Meta? = null,
-    val progresoMeta: ProgresoMeta? = null,
+    var antropometria: List<Antropometria> = emptyList(),
+    var metaActiva: Meta? = null,
+    var progresoMeta: ProgresoMeta? = null,
 
-    val caloriasConsumidas: Int = 0,
-    val caloriasQuemadas: Int = 0,
-    val pasosTotales: Int = 0,
+    var caloriasConsumidas: Int = 0,
+    var caloriasQuemadas: Int = 0,
+    var pasosTotales: Int = 0,
 
-    val retroalimentaciones: List<Retroalimentacion> = emptyList()
+    var retroalimentaciones: List<Retroalimentacion> = emptyList(),
+
+    // ✅ NUEVO: Agregar sexo del usuario para saber qué medidas mostrar
+    var sexoUsuario: String = "" // "Masculino" o "Femenino"
 ) {
+    // Constructor sin argumentos para Firebase
+    constructor() : this(
+        id = "",
+        fechaCreacion = System.currentTimeMillis(),
+        fechaInicio = 0L,
+        fechaFin = 0L,
+        tipoReporte = TipoReporte.SEMANAL,
+        antropometria = emptyList(),
+        metaActiva = null,
+        progresoMeta = null,
+        caloriasConsumidas = 0,
+        caloriasQuemadas = 0,
+        pasosTotales = 0,
+        retroalimentaciones = emptyList(),
+        sexoUsuario = ""
+    )
+
     // Función helper para obtener datos para gráficas
     fun obtenerDatosGraficas(): Map<String, Any> {
         val datosGraficas = mutableMapOf<String, Any>()
@@ -41,11 +61,19 @@ data class ReporteAvance(
 
         // Antropometría (solo si está disponible)
         antropometria.firstOrNull()?.let { ant ->
-            datosGraficas["antropometria"] = mapOf(
+            val datosAnt = mutableMapOf<String, Any>(
                 "peso" to ant.peso,
                 "grasa" to ant.porcentajeGrasa,
-                "cintura" to ant.cintura
+                "cintura" to ant.cintura,
+                "cuello" to ant.cuello
             )
+
+            // ✅ Agregar cadera solo si existe (mujeres)
+            ant.cadera?.let { cadera ->
+                datosAnt["cadera"] = cadera
+            }
+
+            datosGraficas["antropometria"] = datosAnt
         }
 
         // Progreso (solo si está disponible)
@@ -56,3 +84,6 @@ data class ReporteAvance(
         return datosGraficas
     }
 }
+
+// No necesitamos redefinir Retroalimentacion aquí ya que existe en otro archivo
+// Solo asegúrate de que tu modelo Retroalimentacion tenga constructor sin argumentos

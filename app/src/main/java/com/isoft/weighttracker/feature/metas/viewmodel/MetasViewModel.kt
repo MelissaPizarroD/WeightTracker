@@ -14,13 +14,12 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 data class ProgresoMeta(
-    val pesoActual: Float,
-    val porcentajeProgreso: Float,
-    val pesoRestante: Float,
-    val diasRestantes: Long,
-    val enProgreso: Boolean
+    var pesoActual: Float = 0f,
+    var porcentajeProgreso: Float = 0f,
+    var pesoRestante: Float = 0f,
+    var diasRestantes: Long = 0L,
+    var enProgreso: Boolean = false
 )
-
 class MetasViewModel : ViewModel() {
 
     private val metasRepository = MetasRepository()
@@ -68,36 +67,66 @@ class MetasViewModel : ViewModel() {
     fun cargarMetaActiva() {
         viewModelScope.launch {
             try {
+                Log.d("MetasViewModel", "🚀 === INICIANDO CARGA META ACTIVA ===")
+
                 val metaActiva = metasRepository.obtenerMetaActiva()
+
+                Log.d("MetasViewModel", "📊 Meta obtenida del repositorio: $metaActiva")
+                Log.d("MetasViewModel", "📊 Meta ID: ${metaActiva?.id}")
+                Log.d("MetasViewModel", "📊 Meta activa flag: ${metaActiva?.activa}")
+                Log.d("MetasViewModel", "📊 Meta cumplida flag: ${metaActiva?.cumplida}")
+                Log.d("MetasViewModel", "📊 Meta objetivo: ${metaActiva?.objetivo}")
+
                 _metaActiva.value = metaActiva
-                Log.d("MetasViewModel", "Meta activa cargada: ${metaActiva?.id}")
-                metaActiva?.let { calcularProgreso(it) }
+
+                Log.d("MetasViewModel", "📊 StateFlow actualizado - valor actual: ${_metaActiva.value}")
+                Log.d("MetasViewModel", "✅ === FIN CARGA META ACTIVA ===")
+
+                metaActiva?.let {
+                    Log.d("MetasViewModel", "🎯 Calculando progreso para meta: ${it.id}")
+                    calcularProgreso(it)
+                } ?: Log.w("MetasViewModel", "⚠️ No hay meta activa para calcular progreso")
+
             } catch (e: Exception) {
-                Log.e("MetasViewModel", "Error al cargar meta activa", e)
+                Log.e("MetasViewModel", "❌ Error al cargar meta activa", e)
                 _metaActiva.value = null
             }
         }
     }
 
-    // Función específica para cargar solo el progreso
+    // También agregar logs a cargarProgreso()
     fun cargarProgreso() {
         viewModelScope.launch {
             try {
+                Log.d("MetasViewModel", "🚀 === INICIANDO CARGA PROGRESO ===")
+
                 val metaActiva = _metaActiva.value
+                Log.d("MetasViewModel", "📊 Meta activa actual en StateFlow: $metaActiva")
+
                 if (metaActiva != null) {
+                    Log.d("MetasViewModel", "🎯 Calculando progreso para meta existente: ${metaActiva.id}")
                     calcularProgreso(metaActiva)
                 } else {
+                    Log.w("MetasViewModel", "⚠️ No hay meta activa en StateFlow, intentando cargarla...")
                     // Si no hay meta activa, intentar cargarla primero
                     val meta = metasRepository.obtenerMetaActiva()
+                    Log.d("MetasViewModel", "📊 Meta obtenida del repositorio (segunda llamada): $meta")
+
                     if (meta != null) {
                         _metaActiva.value = meta
+                        Log.d("MetasViewModel", "🎯 Calculando progreso para meta recién cargada: ${meta.id}")
                         calcularProgreso(meta)
                     } else {
+                        Log.w("MetasViewModel", "❌ No se pudo obtener meta activa del repositorio")
                         _progreso.value = null
                     }
                 }
+
+                Log.d("MetasViewModel", "📊 Progreso final: ${_progreso.value}")
+                Log.d("MetasViewModel", "✅ === FIN CARGA PROGRESO ===")
+
             } catch (e: Exception) {
-                Log.e("MetasViewModel", "Error al cargar progreso", e)
+                Log.e("MetasViewModel", "❌ Error al cargar progreso", e)
                 _progreso.value = null
             }
         }
