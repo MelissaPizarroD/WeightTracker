@@ -19,6 +19,9 @@ import com.isoft.weighttracker.feature.actividadfisica.model.RegistroPasos
 import com.isoft.weighttracker.feature.actividadfisica.viewmodel.ActividadFisicaViewModel
 import com.isoft.weighttracker.core.permissions.PermissionViewModel
 import com.isoft.weighttracker.core.permissions.PermissionState
+import com.isoft.weighttracker.shared.UserViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.isoft.weighttracker.core.model.PersonaProfile
 import kotlinx.coroutines.launch
 import java.net.URLEncoder
 import java.text.SimpleDateFormat
@@ -29,6 +32,7 @@ import java.util.*
 fun HistorialActividadFisicaScreen(
     navController: NavController,
     viewModel: ActividadFisicaViewModel = viewModel(),
+    userViewModel: UserViewModel = viewModel(), // ✅ AÑADIR ESTO
     permissionViewModel: PermissionViewModel,
     requestPermission: (String) -> Unit
 ) {
@@ -41,6 +45,10 @@ fun HistorialActividadFisicaScreen(
     val sensorDisponible by viewModel.sensorDisponible.collectAsState()
     val error by viewModel.error.collectAsState()
     val permissionState by permissionViewModel.activityRecognitionPermission.collectAsState()
+
+    // ✅ AÑADIR ESTAS LÍNEAS
+    val personaState = userViewModel.personaProfile.collectAsState()
+    val persona = personaState.value
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -68,6 +76,7 @@ fun HistorialActividadFisicaScreen(
 
     // Cargar datos iniciales
     LaunchedEffect(Unit) {
+        userViewModel.loadPersonaProfile() // ✅ AÑADIR ESTO
         viewModel.cargarActividades()
         viewModel.cargarHistorialPasos()
         viewModel.prepararContadorSiEsNecesario()
@@ -105,13 +114,15 @@ fun HistorialActividadFisicaScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            // Sección contador de pasos mejorada
+            // ✅ MODIFICAR LA LLAMADA A StepCounterSection
             StepCounterSection(
                 contadorActivo = contadorActivo,
                 pasosHoy = pasosHoy,
                 sincronizado = sincronizado,
                 sensorDisponible = sensorDisponible,
                 permissionState = permissionState,
+                persona = persona, // ✅ AÑADIR ESTO
+                navController = navController, // ✅ AÑADIR ESTO
                 onToggleContador = { activo ->
                     if (activo) {
                         if (permissionState != PermissionState.GRANTED) {
@@ -189,12 +200,20 @@ private fun StepCounterSection(
     sincronizado: Boolean,
     sensorDisponible: Boolean,
     permissionState: PermissionState,
+    persona: PersonaProfile?,
+    navController: NavController,
     onToggleContador: (Boolean) -> Unit
 ) {
+    // Validación de perfil
+    val perfilCompleto = persona != null &&
+            persona.estatura > 0f &&
+            persona.sexo.isNotBlank() &&
+            persona.edad > 0
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (contadorActivo)
+            containerColor = if (contadorActivo && perfilCompleto && sensorDisponible)
                 MaterialTheme.colorScheme.primaryContainer
             else
                 MaterialTheme.colorScheme.surfaceVariant
@@ -206,21 +225,125 @@ private fun StepCounterSection(
                 Icon(
                     Icons.Default.DirectionsWalk,
                     contentDescription = null,
-                    tint = if (contadorActivo) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (contadorActivo && perfilCompleto && sensorDisponible)
+                        MaterialTheme.colorScheme.primary
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     "Contador de pasos diario",
                     style = MaterialTheme.typography.titleMedium,
-                    color = if (contadorActivo) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant
+                    color = if (contadorActivo && perfilCompleto && sensorDisponible)
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    else
+                        MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Switch(
-                    checked = contadorActivo,
-                    onCheckedChange = onToggleContador
+                    checked = contadorActivo && perfilCompleto && sensorDisponible,
+                    enabled = perfilCompleto && sensorDisponible, // ✅ AÑADIR sensorDisponible
+                    onCheckedChange = { if (perfilCompleto && sensorDisponible) onToggleContador(it) }
                 )
             }
 
+            // ✅ PRIORIZAR MENSAJE DE SENSOR NO DISPONIBLE
+            if (!sensorDisponible) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    ),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+                        )
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Sensor no disponible",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Este dispositivo no tiene sensor de pasos compatible. El contador automático no funcionará en emuladores o dispositivos sin sensores de actividad física.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                return@Column // ✅ NO MOSTRAR MÁS CONTENIDO SI NO HAY SENSOR
+            }
+
+            // MENSAJE DE PERFIL INCOMPLETO (solo si hay sensor)
+            if (!perfilCompleto) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                    ),
+                    border = CardDefaults.outlinedCardBorder().copy(
+                        brush = androidx.compose.ui.graphics.SolidColor(
+                            MaterialTheme.colorScheme.error.copy(alpha = 0.3f)
+                        )
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Perfil personal requerido",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Para activar el contador de pasos necesitas completar tu perfil personal primero.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Button(
+                            onClick = { navController.navigate("datosPersonales") },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Completar perfil personal")
+                        }
+                    }
+                }
+                return@Column // ✅ NO MOSTRAR MÁS CONTENIDO SI NO HAY PERFIL
+            }
+
+            // CONTENIDO CUANDO CONTADOR ESTÁ ACTIVO (solo si hay sensor Y perfil)
             if (contadorActivo) {
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -278,24 +401,8 @@ private fun StepCounterSection(
                     }
                 }
 
-                // Advertencias o información adicional
-                if (!sensorDisponible) {
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.Warning,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            "Este dispositivo no tiene sensor de pasos",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                } else if (pasosHoy == 0 && sincronizado) {
+                // Mensaje motivacional cuando hay 0 pasos
+                if (pasosHoy == 0 && sincronizado) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(

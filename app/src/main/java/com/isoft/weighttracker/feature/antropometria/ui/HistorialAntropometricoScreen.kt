@@ -142,17 +142,19 @@ fun HistorialAntropometricoScreen(
     }
 
     //AQUI HICE CAMBIO
-
+    // Verificar si el PersonaProfile existe en Firestore
     if (persona == null) {
-        Box(Modifier.fillMaxSize(), Alignment.Center) {
-            CircularProgressIndicator()
+        var mostrandoMensaje by remember { mutableStateOf(true) }
+
+        // Redirigir después de mostrar el mensaje por unos segundos
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(5000) // Esperar 2.5 segundos 2500
+            navController.navigate("datosPersonales") {
+                popUpTo("historialAntropometrico") { inclusive = true }
+            }
         }
-        return
-    }
 
-    val datosIncompletos = persona.estatura == null || persona.sexo.isNullOrBlank() || persona.edad == null
-
-    if (datosIncompletos) {
+        // Mostrar mensaje explicativo
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -161,7 +163,7 @@ fun HistorialAntropometricoScreen(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
             ) {
                 Column(
                     modifier = Modifier
@@ -173,24 +175,87 @@ fun HistorialAntropometricoScreen(
                         Icons.Default.Person,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "¡Bienvenido!",
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Para registrar mediciones antropométricas necesitas completar tu perfil personal primero",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        "Te redirigiremos en un momento...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+        return
+    }
+
+// Verificar si los datos están completos (por si acaso)
+    val datosIncompletos = persona.estatura <= 0f || persona.sexo.isBlank() || persona.edad <= 0
+
+    if (datosIncompletos) {
+        LaunchedEffect(Unit) {
+            kotlinx.coroutines.delay(2000) // Esperar 2 segundos
+            navController.navigate("datosPersonales")
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
                         modifier = Modifier.size(48.dp)
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
-                        "Primero registra tus datos personales",
+                        "Datos incompletos",
                         style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onErrorContainer
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Necesitamos información como tu edad, sexo y estatura para registrar mediciones.",
+                        "Algunos datos personales están incompletos. Te redirigiremos para completarlos.",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center
                     )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { navController.navigate("datosPersonales") }) {
-                        Text("Ir a Datos Personales")
-                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    LinearProgressIndicator(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             }
         }

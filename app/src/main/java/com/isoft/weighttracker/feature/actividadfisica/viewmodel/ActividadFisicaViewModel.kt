@@ -62,21 +62,31 @@ class ActividadFisicaViewModel(application: Application) : AndroidViewModel(appl
     fun prepararContadorSiEsNecesario() {
         viewModelScope.launch {
             try {
+                // ✅ VERIFICAR SENSOR PRIMERO
+                val tieneSensor = PasoSensorManager(context) {}.tieneSensor()
+                _sensorDisponible.value = tieneSensor
+
                 val perfil = userRepo.getPersonaProfile()
                 val activoRemoto = perfil?.contadorPasosActivo == true
                 val tienePermiso = MainActivity.hasActivityRecognitionPermission(context)
 
-                // Solo activar localmente si tenemos permiso, independientemente del estado remoto
-                _contadorPasosActivo.value = activoRemoto && tienePermiso
+                // ✅ SOLO ACTIVAR SI HAY SENSOR, PERMISO Y ESTÁ ACTIVO REMOTO
+                val deberiaEstarActivo = activoRemoto && tienePermiso && tieneSensor
+                _contadorPasosActivo.value = deberiaEstarActivo
 
-                // Si está activo remoto pero no tenemos permiso, corregir en Firestore
-                if (activoRemoto && !tienePermiso) {
+                // ✅ SI ESTÁ ACTIVO REMOTO PERO NO CUMPLE CONDICIONES LOCALES, CORREGIR EN FIRESTORE
+                if (activoRemoto && (!tienePermiso || !tieneSensor)) {
+                    Log.d("PasosVM", "Desactivando contador remoto: permiso=$tienePermiso, sensor=$tieneSensor")
                     userRepo.updatePersonaProfile(perfil.copy(contadorPasosActivo = false))
                 }
 
-                if (tienePermiso && activoRemoto) {
-                    verificarYActivarSensor()
+                // ✅ SOLO INICIAR SENSOR SI TODO ESTÁ OK
+                if (deberiaEstarActivo) {
+                    iniciarSensorPasos()
+                } else {
+                    detenerSensorPasos()
                 }
+
             } catch (e: Exception) {
                 Log.e("PasosVM", "Error al preparar contador", e)
                 _contadorPasosActivo.value = false
@@ -86,8 +96,15 @@ class ActividadFisicaViewModel(application: Application) : AndroidViewModel(appl
     }
 
     fun toggleContadorPasos(activo: Boolean, onPermissionDenied: () -> Unit = {}) {
+        // ✅ VERIFICAR PERMISOS
         if (activo && !MainActivity.hasActivityRecognitionPermission(context)) {
             onPermissionDenied()
+            return
+        }
+
+        // ✅ VERIFICAR SENSOR
+        if (activo && !_sensorDisponible.value) {
+            _error.value = "Dispositivo no compatible con contador de pasos"
             return
         }
 
@@ -143,27 +160,13 @@ class ActividadFisicaViewModel(application: Application) : AndroidViewModel(appl
         }
     }
 
-    private fun verificarYActivarSensor() {
-        viewModelScope.launch {
-            try {
-                val tieneSensor = PasoSensorManager(context) {}.tieneSensor()
-                _sensorDisponible.value = tieneSensor
-
-                if (!tieneSensor) {
-                    _contadorPasosActivo.value = false
-                    _error.value = "Dispositivo no compatible con contador de pasos"
-                } else if (MainActivity.hasActivityRecognitionPermission(context)) {
-                    iniciarSensorPasos()
-                }
-            } catch (e: Exception) {
-                Log.e("PasosVM", "Error al verificar sensor", e)
-                _error.value = "Error al verificar sensores"
-                _contadorPasosActivo.value = false
-            }
-        }
-    }
-
     private fun iniciarSensorPasos() {
+        // ✅ VERIFICAR SENSOR ANTES DE INICIAR
+        if (!_sensorDisponible.value) {
+            Log.w("PasosVM", "Intentando iniciar sensor pero no está disponible")
+            return
+        }
+
         pasoSensorManager = PasoSensorManager(context) { pasosHoy ->
             Log.d("PasosVM", "Nuevos pasos detectados: $pasosHoy")
             _pasos.value = pasosHoy
