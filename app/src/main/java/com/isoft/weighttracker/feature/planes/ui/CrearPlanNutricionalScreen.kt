@@ -1,5 +1,6 @@
 package com.isoft.weighttracker.feature.planes.ui
 
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -19,6 +20,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.isoft.weighttracker.core.data.UserRepository
 import com.isoft.weighttracker.core.model.PersonaProfile
+import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import com.isoft.weighttracker.feature.planes.model.ComidaDiaria
 import com.isoft.weighttracker.feature.planes.model.PlanNutricional
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
@@ -40,9 +42,6 @@ fun CrearPlanNutricionalScreen(
     val isLoading by planesViewModel.isLoading.collectAsState()
     val mensaje by planesViewModel.mensaje.collectAsState()
 
-    // Estados para los datos del usuario
-    var perfilPersona by remember { mutableStateOf<PersonaProfile?>(null) }
-
     // Estados para el plan nutricional
     var frecuencia by remember { mutableStateOf("Lunes a Sábado") }
     var repeticion by remember { mutableStateOf("diaria") }
@@ -57,15 +56,25 @@ fun CrearPlanNutricionalScreen(
     var mediaTarde by remember { mutableStateOf(ComidaDiaria(nombre = "Media Tarde")) }
     var cena by remember { mutableStateOf(ComidaDiaria(nombre = "Cena")) }
 
-    // Cargar datos del usuario solicitante
+    // ✅ NUEVOS: Estados para datos del usuario
+    var personaProfile by remember { mutableStateOf<PersonaProfile?>(null) }
+    var antropometriaReciente by remember { mutableStateOf<Antropometria?>(null) }
+
+    // ✅ AGREGADO: Cargar usuario profesional
+    LaunchedEffect(Unit) {
+        userViewModel.loadUser() // ← FIX PARA QUE APAREZCA EL PROFESIONAL
+    }
+
+    // ✅ ACTUALIZADO: Cargar datos del usuario que solicitó el plan
     LaunchedEffect(solicitud.usuarioId) {
         scope.launch {
             try {
                 val userRepo = UserRepository()
-                // Por ahora, mostraremos los datos básicos de la solicitud
-                // En producción, aquí cargarías el perfil completo del usuario
+                // Cargar datos del usuario que solicitó el plan
+                personaProfile = userRepo.getPersonaProfileByUserId(solicitud.usuarioId)
+                antropometriaReciente = userRepo.getAntropometriaRecienteByUserId(solicitud.usuarioId)
             } catch (e: Exception) {
-                // Manejar error
+                Log.e("CrearPlanNutricional", "Error cargando datos del usuario", e)
             }
         }
     }
@@ -105,7 +114,7 @@ fun CrearPlanNutricionalScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Información del usuario
+            // ✅ ACTUALIZADA: Información del usuario CON antecedentes médicos
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
@@ -123,30 +132,105 @@ fun CrearPlanNutricionalScreen(
                             tint = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            "Datos del Usuario",
+                            "Información del Usuario",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
+                    // Datos básicos
                     Text(
-                        "Nombre: ${solicitud.nombreUsuario}",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        "👤 Nombre: ${solicitud.nombreUsuario}",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
-                        "Email: ${solicitud.emailUsuario}",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        "📧 Email: ${solicitud.emailUsuario}",
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    // ✅ DATOS MÉDICOS Y ANTROPOMÉTRICOS
+                    personaProfile?.let { profile ->
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            "📋 Datos Médicos y Físicos:",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Text(
+                            "🎂 Edad: ${profile.edad} años",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Text(
+                            "⚧ Sexo: ${profile.sexo.replaceFirstChar { it.uppercase() }}",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        Text(
+                            "📏 Estatura: ${profile.estatura} cm",
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+
+                        // Antropometría reciente
+                        antropometriaReciente?.let { antro ->
+                            Text(
+                                "⚖️ Peso actual: ${antro.peso} kg (IMC: ${"%.1f".format(antro.imc)})",
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // ✅ ANTECEDENTES MÉDICOS - Lo más importante
+                        Text(
+                            "🏥 Antecedentes Médicos:",
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+                            )
+                        ) {
+                            Text(
+                                text = if (profile.antecedentesMedicos.isNotBlank()) {
+                                    profile.antecedentesMedicos
+                                } else {
+                                    "Sin antecedentes médicos registrados"
+                                },
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (profile.antecedentesMedicos.isNotBlank()) {
+                                    MaterialTheme.colorScheme.onSurface
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                }
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     Text(
-                        "Solicitud:",
+                        "💬 Solicitud:",
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        style = MaterialTheme.typography.bodyMedium
                     )
                     Text(
                         solicitud.descripcion,
@@ -302,13 +386,31 @@ fun CrearPlanNutricionalScreen(
                 }
             }
 
-            // Botón de crear plan
+            // ✅ BOTÓN ACTUALIZADO: Con debugging y validación del profesional
             Button(
                 onClick = {
+                    // ✅ DEBUG: Verificar datos del profesional
+                    Log.d("CrearPlan", "=== DEBUG DATOS PROFESIONAL ===")
+                    Log.d("CrearPlan", "currentUser: $currentUser")
+                    Log.d("CrearPlan", "currentUser?.uid: ${currentUser?.uid}")
+                    Log.d("CrearPlan", "currentUser?.name: ${currentUser?.name}")
+
+                    val profesionalId = currentUser?.uid ?: ""
+                    val nombreProfesional = currentUser?.name ?: ""
+
+                    Log.d("CrearPlan", "profesionalId final: '$profesionalId'")
+                    Log.d("CrearPlan", "nombreProfesional final: '$nombreProfesional'")
+
+                    if (profesionalId.isEmpty()) {
+                        Log.e("CrearPlan", "❌ PROBLEMA: profesionalId está vacío!")
+                        Toast.makeText(context, "Error: No se pudo identificar al profesional", Toast.LENGTH_LONG).show()
+                        return@Button
+                    }
+
                     val plan = PlanNutricional(
                         usuarioId = solicitud.usuarioId,
-                        profesionalId = currentUser?.uid ?: "",
-                        nombreProfesional = currentUser?.name ?: "",
+                        profesionalId = profesionalId,
+                        nombreProfesional = nombreProfesional,
                         frecuencia = frecuencia,
                         repeticion = repeticion,
                         desayuno = desayuno,
@@ -320,6 +422,8 @@ fun CrearPlanNutricionalScreen(
                         bebidasNoPermitidas = bebidasNoPermitidas,
                         observaciones = observaciones
                     )
+
+                    Log.d("CrearPlan", "Plan nutricional creado con profesionalId: '${plan.profesionalId}' y nombre: '${plan.nombreProfesional}'")
 
                     planesViewModel.crearPlanNutricional(solicitud.id, plan)
                 },
