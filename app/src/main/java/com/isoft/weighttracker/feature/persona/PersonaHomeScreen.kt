@@ -2,6 +2,7 @@ package com.isoft.weighttracker.feature.persona
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
@@ -21,14 +22,14 @@ import kotlinx.coroutines.launch
 @Composable
 fun PersonaHomeScreen(
     navController: NavController,
-    userViewModel: UserViewModel = viewModel() // ✅ AÑADIR ESTO
+    userViewModel: UserViewModel = viewModel()
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // ✅ AÑADIR VALIDACIÓN DEL PERFIL CON ESTADO DE CARGA
+    // ✅ VALIDACIÓN DEL PERFIL CON ESTADO DE CARGA
     val personaState = userViewModel.personaProfile.collectAsState()
     val persona = personaState.value
     var cargandoDatos by remember { mutableStateOf(true) }
@@ -66,6 +67,7 @@ fun PersonaHomeScreen(
         }
     }
 
+    // ✅ ACTUALIZADA: Lista de menús con planes
     val menuItems = listOf(
         "Datos personales" to "datosPersonales",
         "Datos antropométricos" to "historialAntropometrico",
@@ -73,7 +75,9 @@ fun PersonaHomeScreen(
         "Registrar comida" to "historialComidas",
         "Registrar actividad física" to "historialActividad",
         "Reporte de avance" to "historialReporte",
-        "Profesional" to "asociarProfesional"
+        "Profesional" to "asociarProfesional",
+        "Solicitar Plan" to "solicitarPlan",
+        "Mis Planes" to "misPlanes"
     )
 
     ModalNavigationDrawer(
@@ -149,15 +153,19 @@ fun PersonaHomeScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            "Cargando tu perfil...",
+                            "Cargando perfil...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            }
-            // ✅ MOSTRAR AVISO SI NO HAY PERFIL COMPLETO (después de cargar)
-            else if (mostrandoAviso) {
+            } else if (mostrandoAviso) {
+                // ✅ MOSTRAR AVISO PARA COMPLETAR PERFIL
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(3000) // Mostrar por 3 segundos
+                    navController.navigate("datosPersonales")
+                }
+
                 Box(
                     modifier = Modifier
                         .padding(innerPadding)
@@ -167,9 +175,7 @@ fun PersonaHomeScreen(
                 ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(
                             modifier = Modifier
@@ -181,162 +187,238 @@ fun PersonaHomeScreen(
                                 Icons.Default.Person,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(64.dp)
+                                modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "¡Bienvenido a WeightTracker!",
+                                "¡Completa tu perfil!",
                                 style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                textAlign = TextAlign.Center,
-                                fontWeight = FontWeight.Bold
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Para comenzar a usar todas las funciones de la app, necesitas completar tu perfil personal.",
+                                "Para usar todas las funciones necesitas completar tu perfil personal primero",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            Button(
-                                onClick = { navController.navigate("datosPersonales") },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary
-                                )
-                            ) {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Completar perfil personal")
-                            }
-                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Solo tomará unos minutos 📝",
+                                "Te redirigiremos en un momento...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
-                                textAlign = TextAlign.Center
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 }
             } else {
-                // ✅ CONTENIDO NORMAL DE LA PANTALLA
+                // ✅ PANTALLA PRINCIPAL CON DATOS COMPLETOS
                 Column(
                     modifier = Modifier
                         .padding(innerPadding)
                         .fillMaxSize()
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     Text(
                         text = "👋 ¡Hola de nuevo!",
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
                     )
 
                     Text(
-                        text = "Aquí tienes acceso rápido a tus funciones más usadas:",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "¿Qué haremos hoy para alcanzar tus metas?",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
+                    // ✅ CARDS DE ACCESO RÁPIDO PARA PLANES
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        QuickAccessCard("Registrar Peso", "📏") {
-                            navController.navigate("registroAntropometrico")
-                        }
-                        QuickAccessCard("Ver Metas", "🎯") {
-                            navController.navigate("historialMetas")
-                        }
-                    }
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        QuickAccessCard("Comidas", "🍽️") {
-                            navController.navigate("historialComidas")
-                        }
-                        QuickAccessCard("Actividad", "🏃") {
-                            navController.navigate("historialActividad")
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.weight(1f))
-
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("¿Sabías qué?", fontWeight = FontWeight.Bold)
-                            Text(
-                                text = "Registrar tu progreso regularmente mejora tus resultados hasta un 30%. ¡Sigue así! 💪",
-                                style = MaterialTheme.typography.bodySmall
+                        // Card Solicitar Plan
+                        Card(
+                            onClick = { navController.navigate("solicitarPlan") },
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
                             )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "📝",
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Solicitar Plan",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    "Pide un plan a tus profesionales",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+
+                        // Card Mis Planes
+                        Card(
+                            onClick = { navController.navigate("misPlanes") },
+                            modifier = Modifier.weight(1f),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "📋",
+                                    style = MaterialTheme.typography.headlineMedium
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Mis Planes",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                                Text(
+                                    "Ver y gestionar tus planes",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Cards de acceso rápido originales
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            onClick = { navController.navigate("historialComidas") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("🍽️", style = MaterialTheme.typography.headlineMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Registrar Comida",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Card(
+                            onClick = { navController.navigate("historialActividad") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("🏃‍♂️", style = MaterialTheme.typography.headlineMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Actividad Física",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Card(
+                            onClick = { navController.navigate("historialAntropometrico") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("📏", style = MaterialTheme.typography.headlineMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Antropometría",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        Card(
+                            onClick = { navController.navigate("historialReporte") },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("📊", style = MaterialTheme.typography.headlineMedium)
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Reportes",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
                     }
                 }
             }
         }
-
-        // 🔒 Dialog de confirmación para cerrar sesión
-        if (showLogoutDialog) {
-            AlertDialog(
-                onDismissRequest = { showLogoutDialog = false },
-                title = { Text("Cerrar sesión") },
-                text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            showLogoutDialog = false
-                            FirebaseAuth.getInstance().signOut()
-                            navController.navigate("login") {
-                                popUpTo(0) { inclusive = true }
-                            }
-                        }
-                    ) {
-                        Text("Sí")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showLogoutDialog = false }) {
-                        Text("Cancelar")
-                    }
-                }
-            )
-        }
     }
-}
 
-@Composable
-fun QuickAccessCard(title: String, emoji: String, onClick: () -> Unit) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(100.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+    // ✅ DIÁLOGO DE CONFIRMACIÓN PARA CERRAR SESIÓN
+    if (showLogoutDialog) {
+        AlertDialog(
+            onDismissRequest = { showLogoutDialog = false },
+            title = { Text("Cerrar sesión") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        FirebaseAuth.getInstance().signOut()
+                        navController.navigate("login") {
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                ) {
+                    Text("Cerrar sesión")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
         )
-    ) {
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(emoji, style = MaterialTheme.typography.headlineMedium)
-            Spacer(Modifier.height(4.dp))
-            Text(title, style = MaterialTheme.typography.bodyMedium)
-        }
     }
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
@@ -37,9 +38,10 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
+    // ✅ ACTUALIZADA: Lista de menús con solicitudes de planes
     val menuItems = listOf(
         "Perfil Profesional" to "datosProfesional",
-        "Planes Solicitados" to "planesSolicitados",
+        "Solicitudes de Planes" to "solicitudesPlanes",
         "Reportes de Avance" to "reporteAvance/$role"
     )
 
@@ -100,7 +102,9 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
+                        titleContentColor = MaterialTheme.colorScheme.onPrimary,
+                        navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
+                        actionIconContentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 )
             }
@@ -114,25 +118,170 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
             ) {
                 Text(
                     text = "👋 ¡Hola de nuevo!",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold
                 )
 
                 Text(
-                    text = "Aquí puedes ver los usuarios que se han asociado contigo como $role:",
-                    style = MaterialTheme.typography.bodyMedium
+                    text = "Gestiona a tus usuarios asociados como ${role.replaceFirstChar { it.uppercase() }}",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // ✅ CARD DE ACCESO RÁPIDO PARA SOLICITUDES
+                Card(
+                    onClick = { navController.navigate("solicitudesPlanes") },
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Text(
+                            "📝",
+                            style = MaterialTheme.typography.headlineLarge
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "Solicitudes de Planes",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                            Text(
+                                "Revisa y crea planes para tus usuarios",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                            )
+                        }
+                        Icon(
+                            Icons.Default.ArrowForward,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
+                    }
+                }
+
+                // Cards de acceso rápido adicionales
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Card(
+                        onClick = { navController.navigate("reporteAvance/$role") },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "📊",
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Reportes",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Text(
+                                "Ver avances de usuarios",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+
+                    Card(
+                        onClick = { navController.navigate("datosProfesional") },
+                        modifier = Modifier.weight(1f),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "👨‍⚕️",
+                                style = MaterialTheme.typography.headlineMedium
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Mi Perfil",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                "Datos profesionales",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "👥 Usuarios asociados (${usuarios.size})",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
 
                 if (usuarios.isEmpty()) {
-                    Text("Actualmente no tienes usuarios asociados.")
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                "👤",
+                                style = MaterialTheme.typography.headlineLarge
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "No tienes usuarios asociados",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Los usuarios que se asocien contigo aparecerán aquí",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 } else {
                     LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.fillMaxSize()
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(usuarios) { user ->
-                            UsuarioCard(user = user)
+                        items(usuarios) { usuario ->
+                            UsuarioCard(
+                                usuario = usuario,
+                                onVerReportes = {
+                                    navController.navigate("reporteAvance/$role")
+                                }
+                            )
                         }
                     }
                 }
@@ -140,22 +289,22 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
         }
     }
 
+    // Diálogo de confirmación para cerrar sesión
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
             title = { Text("Cerrar sesión") },
-            text = { Text("¿Estás seguro de que deseas cerrar sesión?") },
+            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
             confirmButton = {
                 TextButton(
                     onClick = {
-                        showLogoutDialog = false
                         FirebaseAuth.getInstance().signOut()
                         navController.navigate("login") {
                             popUpTo(0) { inclusive = true }
                         }
                     }
                 ) {
-                    Text("Sí")
+                    Text("Cerrar sesión")
                 }
             },
             dismissButton = {
@@ -168,11 +317,14 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
 }
 
 @Composable
-fun UsuarioCard(user: User) {
+private fun UsuarioCard(
+    usuario: User,
+    onVerReportes: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
+            containerColor = MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -181,57 +333,59 @@ fun UsuarioCard(user: User) {
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            val context = LocalContext.current
-            val photoUrl = user.photoUrl
-            val hasValidPhoto = !photoUrl.isNullOrBlank()
-
-            if (hasValidPhoto) {
+            // Avatar del usuario
+            if (!usuario.photoUrl.isNullOrEmpty()) {
                 val painter = rememberAsyncImagePainter(
-                    model = ImageRequest.Builder(context)
-                        .data(photoUrl)
-                        .crossfade(true)
+                    ImageRequest.Builder(LocalContext.current)
+                        .data(usuario.photoUrl)
                         .build()
                 )
-
                 Image(
                     painter = painter,
-                    contentDescription = "Foto de perfil",
+                    contentDescription = null,
                     modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape),
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
                     contentScale = ContentScale.Crop
                 )
             } else {
-                // Avatar con inicial
+                // Avatar por defecto
                 Box(
-                    contentAlignment = Alignment.Center,
                     modifier = Modifier
-                        .size(64.dp)
+                        .size(48.dp)
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
                 ) {
-                    val inicial = user.name.firstOrNull()?.uppercase() ?: "?"
                     Text(
-                        text = inicial,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        style = MaterialTheme.typography.titleLarge,
+                        text = usuario.name.firstOrNull()?.uppercase() ?: "U",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         fontWeight = FontWeight.Bold
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(16.dp)) // Espaciado entre avatar y texto
+            Spacer(modifier = Modifier.width(16.dp))
 
-            Column {
+            // Información del usuario
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = user.name,
+                    text = usuario.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = user.email,
-                    style = MaterialTheme.typography.bodySmall
+                    text = usuario.email,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            // Botón para ver reportes
+            TextButton(onClick = onVerReportes) {
+                Text("Ver reportes")
             }
         }
     }

@@ -3,10 +3,12 @@ package com.isoft.weighttracker.core.data
 import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import com.isoft.weighttracker.core.model.PersonaProfile
 import com.isoft.weighttracker.core.model.ProfesionalProfile
 import com.isoft.weighttracker.core.model.User
+import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import kotlinx.coroutines.tasks.await
 
 class UserRepository {
@@ -137,6 +139,38 @@ class UserRepository {
         }
     }
 
+    //AGREGADO DE AQUÍ
+
+    // Metodo para obtener PersonaProfile de cualquier usuario (para profesionales)
+    suspend fun getPersonaProfileByUserId(userId: String): PersonaProfile? {
+        return try {
+            val doc = db.collection("users").document(userId)
+                .collection("personaProfile").document("info").get().await()
+
+            doc.toObject(PersonaProfile::class.java)
+        } catch (e: Exception) {
+            Log.e("UserRepository", "❌ Error obteniendo PersonaProfile del usuario $userId", e)
+            null
+        }
+    }
+
+    // Metodo para obtener antropometría más reciente de cualquier usuario
+    suspend fun getAntropometriaRecienteByUserId(userId: String): Antropometria? {
+        return try {
+            val snapshot = db.collection("users").document(userId)
+                .collection("antropometria")
+                .orderBy("fecha", Query.Direction.DESCENDING)
+                .limit(1)
+                .get()
+                .await()
+
+            snapshot.documents.firstOrNull()?.toObject(Antropometria::class.java)
+        } catch (e: Exception) {
+            Log.e("UserRepository", "❌ Error obteniendo antropometría del usuario $userId", e)
+            null
+        }
+    }
+    //HASTA AQUÍ
 
     fun signOut() {
         auth.signOut()

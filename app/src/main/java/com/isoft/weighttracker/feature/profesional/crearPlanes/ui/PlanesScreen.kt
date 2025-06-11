@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.profesional.planes.ui
+package com.isoft.weighttracker.feature.profesional.crearPlanes.ui
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavController

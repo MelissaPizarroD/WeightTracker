@@ -33,7 +33,6 @@ import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
 import com.isoft.weighttracker.feature.comidas.model.Comida
 import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import com.isoft.weighttracker.core.permissions.PermissionViewModel
-import com.isoft.weighttracker.feature.profesional.planes.ui.PlanesScreen
 import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
 import com.isoft.weighttracker.feature.profesional.datosProf.ui.DatosProfesionalScreen
 import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
@@ -42,6 +41,13 @@ import com.isoft.weighttracker.feature.reporteAvance.ui.DetalleReporteScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.GraficasAnaliticasScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.HistorialReportesScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.RegistrarReporteScreen
+// ✅ IMPORTACIONES PARA PLANES
+import com.isoft.weighttracker.feature.planes.ui.SolicitarPlanScreen
+import com.isoft.weighttracker.feature.planes.ui.MisPlanesScreen
+import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
+import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
+import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
+import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -199,17 +205,13 @@ fun AppNavigation(
             DatosProfesionalScreen(navController)
         }
 
-        composable("planesSolicitados") {
-            PlanesScreen(navController)
-        }
-
         // RUTA CORREGIDA: reporteAvance con parámetro role
         composable("reporteAvance/{role}") { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role") ?: ""
             ReportesScreen(navController, role)
         }
 
-        // === NUEVA RUTA: RETROALIMENTACIÓN ===
+        // === RUTA: RETROALIMENTACIÓN ===
         composable(
             "retroalimentacion/{reporteId}/{usuarioId}",
             arguments = listOf(
@@ -224,6 +226,52 @@ fun AppNavigation(
                 reporteId = reporteId,
                 usuarioId = usuarioId
             )
+        }
+
+        // === ✅ RUTAS DE PLANES (USUARIOS) ===
+        composable("solicitarPlan") {
+            SolicitarPlanScreen(navController)
+        }
+
+        composable("misPlanes") {
+            MisPlanesScreen(navController)
+        }
+
+        // === ✅ RUTAS DE PLANES (PROFESIONALES) ===
+        composable("solicitudesPlanes") {
+            SolicitudesProfesionalScreen(
+                navController = navController,
+                onSolicitudSelected = { solicitud ->
+                    val solicitudJson = URLEncoder.encode(
+                        Gson().toJson(solicitud),
+                        StandardCharsets.UTF_8.toString()
+                    )
+                    when (solicitud.tipoPlan.name) {
+                        "NUTRICION" -> navController.navigate("crearPlanNutricional/$solicitudJson")
+                        "ENTRENAMIENTO" -> navController.navigate("crearPlanEntrenamiento/$solicitudJson")
+                    }
+                }
+            )
+        }
+
+        composable(
+            "crearPlanNutricional/{solicitudJson}",
+            arguments = listOf(navArgument("solicitudJson") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val solicitudJson = backStackEntry.arguments?.getString("solicitudJson") ?: ""
+            val decoded = URLDecoder.decode(solicitudJson, StandardCharsets.UTF_8.toString())
+            val solicitud = Gson().fromJson(decoded, SolicitudPlan::class.java)
+            CrearPlanNutricionalScreen(navController, solicitud)
+        }
+
+        composable(
+            "crearPlanEntrenamiento/{solicitudJson}",
+            arguments = listOf(navArgument("solicitudJson") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val solicitudJson = backStackEntry.arguments?.getString("solicitudJson") ?: ""
+            val decoded = URLDecoder.decode(solicitudJson, StandardCharsets.UTF_8.toString())
+            val solicitud = Gson().fromJson(decoded, SolicitudPlan::class.java)
+            CrearPlanEntrenamientoScreen(navController, solicitud)
         }
     }
 }
