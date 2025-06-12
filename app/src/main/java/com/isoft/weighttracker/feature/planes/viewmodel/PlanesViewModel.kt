@@ -158,6 +158,39 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
+    // ✅ MÉTODO ACTUALIZADO: Para crear plan nutricional con categorías
+    fun crearPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                // Activar el plan automáticamente
+                val planConActivacion = plan.copy(
+                    fechaActivacion = System.currentTimeMillis(),
+                    estado = EstadoPlan.ACTIVO
+                )
+
+                // Usar el repository existente
+                val planId = repository.crearPlanNutricional(planConActivacion)
+
+                if (planId != null) {
+                    _mensaje.value = "Plan nutricional creado exitosamente"
+                    onComplete(true)
+                } else {
+                    _mensaje.value = "Error al crear el plan nutricional"
+                    onComplete(false)
+                }
+
+            } catch (e: Exception) {
+                _mensaje.value = "Error al crear el plan: ${e.message}"
+                onComplete(false)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ✅ MÉTODO ACTUALIZADO: Para crear plan nutricional desde solicitud (profesionales)
     fun crearPlanNutricional(
         solicitudId: String,
         plan: PlanNutricional
@@ -205,6 +238,66 @@ class PlanesViewModel : ViewModel() {
             }
 
             _isLoading.value = false
+        }
+    }
+
+    // ✅ NUEVO: Metodo para completar solicitud (usado por la nueva pantalla de categorías)
+    fun completarSolicitud(solicitudId: String) {
+        viewModelScope.launch {
+            try {
+                val completada = repository.marcarSolicitudComoCompletada(solicitudId, "")
+                if (completada) {
+                    cargarSolicitudesProfesional()
+                }
+            } catch (e: Exception) {
+                _mensaje.value = "Error al completar la solicitud: ${e.message}"
+            }
+        }
+    }
+
+    // ✅ NUEVO: Metodo para obtener un plan específico por ID
+    fun obtenerPlanPorId(planId: String, onComplete: (PlanNutricional?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+                // Como no tienes este método en el repository, podrías agregarlo
+                // o buscar en la lista actual
+                val plan = _planesNutricion.value.find { it.id == planId }
+                onComplete(plan)
+            } catch (e: Exception) {
+                _mensaje.value = "Error al obtener el plan: ${e.message}"
+                onComplete(null)
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    // ✅ NUEVO: Método para actualizar un plan existente
+    fun actualizarPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                _isLoading.value = true
+
+                // Como no tienes método de actualizar en el repository,
+                // usamos el mismo de crear que hace un "set" (upsert)
+                val planId = repository.crearPlanNutricional(plan)
+
+                if (planId != null) {
+                    _mensaje.value = "Plan actualizado exitosamente"
+                    cargarPlanesUsuario() // Recargar planes del usuario
+                    onComplete(true)
+                } else {
+                    _mensaje.value = "Error al actualizar el plan"
+                    onComplete(false)
+                }
+
+            } catch (e: Exception) {
+                _mensaje.value = "Error al actualizar el plan: ${e.message}"
+                onComplete(false)
+            } finally {
+                _isLoading.value = false
+            }
         }
     }
 

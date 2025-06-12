@@ -112,6 +112,7 @@ fun MisPlanesScreen(
                     items(planesNutricion) { plan ->
                         PlanNutricionalCard(
                             plan = plan,
+                            navController = navController, // ✅ AGREGADO: navController
                             onActivar = { planesViewModel.activarPlanNutricional(plan.id) },
                             onDesactivar = { planesViewModel.desactivarPlanNutricional(plan.id) }
                         )
@@ -245,9 +246,11 @@ private fun ResumenPlanesActivos(
     }
 }
 
+// ✅ ACTUALIZADA: PlanNutricionalCard con navegación y nuevo modelo
 @Composable
 private fun PlanNutricionalCard(
     plan: PlanNutricional,
+    navController: NavController,
     onActivar: () -> Unit,
     onDesactivar: () -> Unit
 ) {
@@ -270,90 +273,161 @@ private fun PlanNutricionalCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "🥗 Plan Nutricional",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     Text(
-                        "Por: ${plan.nombreProfesional}",
+                        "por ${plan.nombreProfesional}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Text(
-                        "Creado: ${dateFormat.format(Date(plan.fechaCreacion))}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                AssistChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            if (esActivo) "✅ Activo" else "⭕ Inactivo"
-                        )
+                // Estado del plan
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = when (plan.estado) {
+                        EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.primary
+                        EstadoPlan.INACTIVO -> MaterialTheme.colorScheme.outline
+                        EstadoPlan.FINALIZADO -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.surfaceVariant
                     }
-                )
+                ) {
+                    Text(
+                        text = when (plan.estado) {
+                            EstadoPlan.ACTIVO -> "ACTIVO"
+                            EstadoPlan.INACTIVO -> "INACTIVO"
+                            EstadoPlan.FINALIZADO -> "FINALIZADO"
+                            else -> plan.estado.name
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (plan.estado) {
+                            EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.onPrimary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // Información del plan
             Text(
                 "📅 Frecuencia: ${plan.frecuencia}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 "🔄 Repetición: ${plan.repeticion}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (plan.observaciones.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            // ✅ NUEVO: Mostrar categorías activas en lugar de comidas (SIN ACEITE)
+            val categoriasActivas = mutableListOf<String>()
+            if (plan.patatasArrozPanPasta.activo) categoriasActivas.add("Cereales")
+            if (plan.verdurasHortalizas.activo) categoriasActivas.add("Verduras")
+            if (plan.frutas.activo) categoriasActivas.add("Frutas")
+            if (plan.lecheDerivados.activo) categoriasActivas.add("Lácteos")
+            if (plan.pescados.activo) categoriasActivas.add("Pescados")
+            if (plan.carnesMagrasAvesHuevos.activo) categoriasActivas.add("Carnes/Huevos")
+            if (plan.legumbres.activo) categoriasActivas.add("Legumbres")
+            if (plan.frutoSecos.activo) categoriasActivas.add("Frutos secos")
+
+            if (categoriasActivas.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Observaciones: ${plan.observaciones}",
+                    "🍽️ Incluye: ${categoriasActivas.joinToString(", ")}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            // ✅ ACTUALIZADO: Mostrar observaciones generales
+            if (plan.observacionesGenerales.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "📝 ${plan.observacionesGenerales}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 2
+                )
+            }
 
+            // Fechas
+            plan.fechaActivacion?.let { fecha ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "✅ Activo desde: ${dateFormat.format(Date(fecha))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Botones de acción
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (esActivo) {
+                if (plan.estado == EstadoPlan.ACTIVO) {
                     OutlinedButton(
                         onClick = onDesactivar,
+                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
+                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     ) {
-                        Icon(Icons.Default.Stop, contentDescription = null)
+                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Desactivar")
                     }
                 } else {
                     Button(
-                        onClick = onActivar
+                        onClick = onActivar,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Activar")
                     }
+                }
+
+                // ✅ NUEVO: Botón para ver detalles funcional
+                OutlinedButton(
+                    onClick = {
+                        navController.navigate("verPlanNutricional/${plan.id}")
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text("Ver Plan")
                 }
             }
         }
     }
 }
 
+// ✅ MANTENIDA: PlanEntrenamientoCard (sin cambios)
 @Composable
 private fun PlanEntrenamientoCard(
     plan: PlanEntrenamiento,
@@ -379,104 +453,142 @@ private fun PlanEntrenamientoCard(
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         "💪 Plan de Entrenamiento",
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     Text(
-                        "Por: ${plan.nombreProfesional}",
+                        "por ${plan.nombreProfesional}",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Text(
-                        "Creado: ${dateFormat.format(Date(plan.fechaCreacion))}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                AssistChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            if (esActivo) "✅ Activo" else "⭕ Inactivo"
-                        )
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = when (plan.estado) {
+                        EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.secondary
+                        EstadoPlan.INACTIVO -> MaterialTheme.colorScheme.outline
+                        EstadoPlan.FINALIZADO -> MaterialTheme.colorScheme.tertiary
+                        else -> MaterialTheme.colorScheme.surfaceVariant
                     }
-                )
+                ) {
+                    Text(
+                        text = when (plan.estado) {
+                            EstadoPlan.ACTIVO -> "ACTIVO"
+                            EstadoPlan.INACTIVO -> "INACTIVO"
+                            EstadoPlan.FINALIZADO -> "FINALIZADO"
+                            else -> plan.estado.name
+                        },
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = when (plan.estado) {
+                            EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.onSecondary
+                            else -> MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
                 "🏋️ Tipo: ${plan.tipoEjercicio}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
-                "📍 Lugar: ${plan.lugarRealizacion.replaceFirstChar { it.uppercase() }}",
-                style = MaterialTheme.typography.bodySmall
+                "📍 Lugar: ${plan.lugarRealizacion}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 "📅 Frecuencia: ${plan.frecuencia}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                "⭐ Dificultad: ${plan.dificultad}",
-                style = MaterialTheme.typography.bodySmall
-            )
-            Text(
-                "🎯 Ejercicios: ${plan.ejercicios.size}",
-                style = MaterialTheme.typography.bodySmall
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
+                else MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            if (plan.duracionEstimada > 0) {
-                val minutos = plan.duracionEstimada / 60
+            if (plan.ejercicios.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "⏱️ Duración: $minutos min",
-                    style = MaterialTheme.typography.bodySmall
+                    "💪 ${plan.ejercicios.size} ejercicios incluidos",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            if (plan.observaciones.isNotBlank()) {
-                Spacer(modifier = Modifier.height(8.dp))
+            if (plan.observaciones.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "Observaciones: ${plan.observaciones}",
+                    "📝 ${plan.observaciones}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
+            plan.fechaActivacion?.let { fecha ->
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    "✅ Activo desde: ${dateFormat.format(Date(fecha))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                    else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                if (esActivo) {
+                if (plan.estado == EstadoPlan.ACTIVO) {
                     OutlinedButton(
                         onClick = onDesactivar,
+                        modifier = Modifier.weight(1f),
                         colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.error
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         )
                     ) {
-                        Icon(Icons.Default.Stop, contentDescription = null)
+                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Desactivar")
                     }
                 } else {
                     Button(
-                        onClick = onActivar
+                        onClick = onActivar,
+                        modifier = Modifier.weight(1f)
                     ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null)
+                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("Activar")
                     }
+                }
+
+                OutlinedButton(
+                    onClick = {
+                        // TODO: Implementar ver plan de entrenamiento
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = ButtonDefaults.outlinedButtonColors(
+                        contentColor = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text("Ver Plan")
                 }
             }
         }

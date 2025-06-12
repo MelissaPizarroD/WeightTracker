@@ -2,15 +2,10 @@ package com.isoft.weighttracker.feature.planes.model
 
 import java.util.UUID
 
-data class ComidaDiaria(
-    var nombre: String = "",
-    var horaSugerida: String = "",
-    var contenido: String = "",
-    var porciones: String = ""
-) {
-    constructor() : this("", "", "", "")
-}
-
+/**
+ * Modelo actualizado para Plan Nutricional basado en categorías de alimentos
+ * Reemplaza el modelo anterior que usaba comidas individuales
+ */
 data class PlanNutricional(
     var id: String = UUID.randomUUID().toString(),
     var fechaCreacion: Long = System.currentTimeMillis(),
@@ -23,22 +18,25 @@ data class PlanNutricional(
     var frecuencia: String = "Lunes a Sábado", // "Lunes a Sábado", "Lunes a Domingo", "Lunes a Viernes"
     var repeticion: String = "diaria", // "cada 3 dias", "cada 2 dias", "diaria"
 
-    // Comidas del día
-    var desayuno: ComidaDiaria = ComidaDiaria(),
-    var mediaMañana: ComidaDiaria = ComidaDiaria(),
-    var almuerzo: ComidaDiaria = ComidaDiaria(),
-    var mediaTarde: ComidaDiaria = ComidaDiaria(),
-    var cena: ComidaDiaria = ComidaDiaria(),
+    // 🥔 Categorías de alimentos - Grupos principales (SIN ACEITE DE OLIVA)
+    var patatasArrozPanPasta: CategoriaAlimento = CategoriaAlimento(),
+    var verdurasHortalizas: CategoriaAlimento = CategoriaAlimento(),
+    var frutas: CategoriaAlimento = CategoriaAlimento(),
+    var lecheDerivados: CategoriaAlimento = CategoriaAlimento(),
+    var pescados: CategoriaAlimento = CategoriaAlimento(),
+    var carnesMagrasAvesHuevos: CategoriaAlimento = CategoriaAlimento(),
+    var legumbres: CategoriaAlimento = CategoriaAlimento(),
+    var frutoSecos: CategoriaAlimento = CategoriaAlimento(),
 
-    // Restricciones
-    var alimentosNoPermitidos: String = "",
-    var bebidasNoPermitidas: String = "",
+    // ❌ Consumo ocasional y moderado
+    var consumoOcasional: ConsumoOcasional = ConsumoOcasional(),
 
-    // Metadatos
+    // Metadatos del plan
     var fechaActivacion: Long? = null,
     var fechaDesactivacion: Long? = null,
-    var observaciones: String = ""
+    var observacionesGenerales: String = "" // Observaciones generales del plan completo
 ) {
+    // Constructor vacío requerido por Firebase
     constructor() : this(
         id = UUID.randomUUID().toString(),
         fechaCreacion = System.currentTimeMillis(),
@@ -48,15 +46,17 @@ data class PlanNutricional(
         estado = EstadoPlan.ACTIVO,
         frecuencia = "Lunes a Sábado",
         repeticion = "diaria",
-        desayuno = ComidaDiaria(),
-        mediaMañana = ComidaDiaria(),
-        almuerzo = ComidaDiaria(),
-        mediaTarde = ComidaDiaria(),
-        cena = ComidaDiaria(),
-        alimentosNoPermitidos = "",
-        bebidasNoPermitidas = "",
+        patatasArrozPanPasta = CategoriaAlimento(),
+        verdurasHortalizas = CategoriaAlimento(),
+        frutas = CategoriaAlimento(),
+        lecheDerivados = CategoriaAlimento(),
+        pescados = CategoriaAlimento(),
+        carnesMagrasAvesHuevos = CategoriaAlimento(),
+        legumbres = CategoriaAlimento(),
+        frutoSecos = CategoriaAlimento(),
+        consumoOcasional = ConsumoOcasional(),
         fechaActivacion = null,
         fechaDesactivacion = null,
-        observaciones = ""
+        observacionesGenerales = ""
     )
 }

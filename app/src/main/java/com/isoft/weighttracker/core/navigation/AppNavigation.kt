@@ -48,6 +48,7 @@ import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
 import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
 import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
+import com.isoft.weighttracker.feature.planes.ui.VerPlanNutricionalScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -262,6 +263,17 @@ fun AppNavigation(
             val decoded = URLDecoder.decode(solicitudJson, StandardCharsets.UTF_8.toString())
             val solicitud = Gson().fromJson(decoded, SolicitudPlan::class.java)
             CrearPlanNutricionalScreen(navController, solicitud)
+        }
+
+        composable(
+            "verPlanNutricional/{planId}",
+            arguments = listOf(navArgument("planId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+            VerPlanNutricionalScreen(
+                navController = navController,
+                planId = planId
+            )
         }
 
         composable(
