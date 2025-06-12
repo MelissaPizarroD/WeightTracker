@@ -23,7 +23,18 @@ class PlanesRepository {
         tipoPlan: TipoPlan,
         descripcion: String,
         nombreUsuario: String,
-        emailUsuario: String
+        emailUsuario: String,
+        // PARÁMETROS DE NUTRICIÓN
+        objetivoNutricion: String = "",
+        nivelActividad: String = "",
+        restricciones: List<String> = emptyList(),
+        restriccionesOtras: String = "",
+        restriccionesMedicas: String = "",
+        // PARÁMETROS DE ENTRENAMIENTO
+        objetivoEntrenamiento: String = "",
+        experienciaPrevia: String = "",
+        disponibilidadSemanal: String = "",
+        equipamientoDisponible: List<String> = emptyList()
     ): Boolean {
         return try {
             val userId = auth.currentUser?.uid ?: return false
@@ -34,12 +45,23 @@ class PlanesRepository {
                 tipoPlan = tipoPlan,
                 descripcion = descripcion,
                 nombreUsuario = nombreUsuario,
-                emailUsuario = emailUsuario
+                emailUsuario = emailUsuario,
+                // CAMPOS ESPECÍFICOS
+                objetivoNutricion = objetivoNutricion,
+                nivelActividad = nivelActividad,
+                restricciones = restricciones,
+                restriccionesOtras = restriccionesOtras,
+                restriccionesMedicas = restriccionesMedicas,
+                objetivoEntrenamiento = objetivoEntrenamiento,
+                experienciaPrevia = experienciaPrevia,
+                disponibilidadSemanal = disponibilidadSemanal,
+                equipamientoDisponible = equipamientoDisponible
             )
 
             Log.d(TAG, "📝 Enviando solicitud de ${tipoPlan.name} a $profesionalId")
+            Log.d(TAG, "👤 Usuario: $nombreUsuario ($emailUsuario)")
 
-            // ✅ NUEVO: Guardar en subcoleción del usuario
+            // ✅ Guardar en subcoleción del usuario
             db.collection("users").document(userId)
                 .collection("solicitudesPlan")
                 .document(solicitud.id)
@@ -58,7 +80,7 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return emptyList()
 
-            // ✅ NUEVO: Obtener de subcoleción del usuario
+            // ✅ Obtener de subcoleción del usuario
             val snapshot = db.collection("users").document(userId)
                 .collection("solicitudesPlan")
                 .orderBy("fechaSolicitud", Query.Direction.DESCENDING)
@@ -78,69 +100,91 @@ class PlanesRepository {
         return try {
             val profesionalId = auth.currentUser?.uid ?: return emptyList()
 
-            // ✅ NUEVO: Usar collectionGroup para buscar en todos los usuarios
-            val snapshot = db.collectionGroup("solicitudesPlan")
-                .whereEqualTo("profesionalId", profesionalId)
-                .whereEqualTo("estado", EstadoSolicitud.PENDIENTE.name)
-                .orderBy("fechaSolicitud", Query.Direction.DESCENDING)
-                .get()
-                .await()
+            Log.d(TAG, "🔍 Buscando solicitudes para profesional: $profesionalId")
 
-            val solicitudes = snapshot.documents.mapNotNull {
-                it.toObject(SolicitudPlan::class.java)
+            // ✅ Buscar en todas las colecciones de usuarios
+            val usuarios = db.collection("users").get().await()
+            val solicitudes = mutableListOf<SolicitudPlan>()
+
+            for (usuarioDoc in usuarios.documents) {
+                try {
+                    val solicitudesSnapshot = usuarioDoc.reference
+                        .collection("solicitudesPlan")
+                        .whereEqualTo("profesionalId", profesionalId)
+                        .whereEqualTo("estado", EstadoSolicitud.PENDIENTE)
+                        .get()
+                        .await()
+
+                    val solicitudesUsuario = solicitudesSnapshot.documents.mapNotNull {
+                        it.toObject(SolicitudPlan::class.java)
+                    }
+
+                    solicitudes.addAll(solicitudesUsuario)
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Error procesando usuario ${usuarioDoc.id}: ${e.message}")
+                }
             }
 
-            Log.d(TAG, "📋 Solicitudes pendientes para profesional: ${solicitudes.size}")
-            solicitudes
+            Log.d(TAG, "📋 Encontradas ${solicitudes.size} solicitudes pendientes")
+            solicitudes.sortedByDescending { it.fechaSolicitud }
+
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error obteniendo solicitudes del profesional", e)
             emptyList()
         }
     }
 
-    suspend fun marcarSolicitudComoCompletada(solicitudId: String, planCreadoId: String): Boolean {
+    suspend fun marcarSolicitudComoCompletada(solicitudId: String, planId: String): Boolean {
         return try {
-            // ✅ NUEVO: Necesitamos encontrar la solicitud en collectionGroup primero
-            val snapshot = db.collectionGroup("solicitudesPlan")
-                .whereEqualTo("id", solicitudId)
-                .get()
-                .await()
+            // Buscar la solicitud en todos los usuarios
+            val usuarios = db.collection("users").get().await()
 
-            val solicitudDoc = snapshot.documents.firstOrNull()
-            if (solicitudDoc != null) {
-                solicitudDoc.reference.update(mapOf(
-                    "estado" to EstadoSolicitud.COMPLETADA.name,
-                    "planCreado" to planCreadoId,
-                    "fechaCompletada" to System.currentTimeMillis()
-                )).await()
+            for (usuarioDoc in usuarios.documents) {
+                try {
+                    val solicitudDoc = usuarioDoc.reference
+                        .collection("solicitudesPlan")
+                        .document(solicitudId)
 
-                Log.d(TAG, "✅ Solicitud marcada como completada: $solicitudId")
-                true
-            } else {
-                Log.e(TAG, "❌ No se encontró la solicitud: $solicitudId")
-                false
+                    val solicitudSnapshot = solicitudDoc.get().await()
+                    if (solicitudSnapshot.exists()) {
+                        solicitudDoc.update(
+                            mapOf(
+                                "estado" to EstadoSolicitud.COMPLETADA,
+                                "planCreado" to planId,
+                                "fechaCompletada" to System.currentTimeMillis()
+                            )
+                        ).await()
+
+                        Log.d(TAG, "✅ Solicitud $solicitudId marcada como completada")
+                        return true
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Error buscando en usuario ${usuarioDoc.id}: ${e.message}")
+                }
             }
+
+            Log.w(TAG, "⚠️ No se encontró la solicitud $solicitudId")
+            false
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error marcando solicitud como completada", e)
             false
         }
     }
 
-    // ===== PLANES NUTRICIONALES (POR USUARIO) =====
+    // ===== PLANES NUTRICIONALES =====
 
     suspend fun crearPlanNutricional(plan: PlanNutricional): String? {
         return try {
-            Log.d(TAG, "🥗 Creando plan nutricional para ${plan.usuarioId}")
+            val planRef = db.collection("users")
+                .document(plan.usuarioId)
+                .collection("planesNutricionales")
+                .document()
 
-            // ✅ NUEVO: Guardar en subcoleción del usuario
-            db.collection("users").document(plan.usuarioId)
-                .collection("planesNutricion")
-                .document(plan.id)
-                .set(plan)
-                .await()
+            val planConId = plan.copy(id = planRef.id)
+            planRef.set(planConId).await()
 
-            Log.d(TAG, "✅ Plan nutricional creado: ${plan.id}")
-            plan.id
+            Log.d(TAG, "✅ Plan nutricional creado: ${planRef.id}")
+            planRef.id
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error creando plan nutricional", e)
             null
@@ -151,9 +195,9 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return emptyList()
 
-            // ✅ NUEVO: Obtener de subcoleción del usuario (más eficiente)
-            val snapshot = db.collection("users").document(userId)
-                .collection("planesNutricion")
+            val snapshot = db.collection("users")
+                .document(userId)
+                .collection("planesNutricionales")
                 .orderBy("fechaCreacion", Query.Direction.DESCENDING)
                 .get()
                 .await()
@@ -162,7 +206,7 @@ class PlanesRepository {
                 it.toObject(PlanNutricional::class.java)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo planes nutricionales del usuario", e)
+            Log.e(TAG, "❌ Error obteniendo planes nutricionales", e)
             emptyList()
         }
     }
@@ -171,20 +215,36 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return false
 
-            // Primero desactivar todos los planes activos del usuario
-            desactivarTodosLosPlanesNutricionales(userId)
-
-            // Activar el plan seleccionado
-            db.collection("users").document(userId)
-                .collection("planesNutricion")
-                .document(planId)
-                .update(mapOf(
-                    "estado" to EstadoPlan.ACTIVO.name,
-                    "fechaActivacion" to System.currentTimeMillis()
-                ))
+            // Primero desactivar todos los planes
+            val planesSnapshot = db.collection("users")
+                .document(userId)
+                .collection("planesNutricionales")
+                .get()
                 .await()
 
-            Log.d(TAG, "✅ Plan nutricional activado: $planId")
+            val batch = db.batch()
+
+            for (doc in planesSnapshot.documents) {
+                batch.update(doc.reference, "estado", EstadoPlan.INACTIVO)
+            }
+
+            // Activar el plan seleccionado
+            val planRef = db.collection("users")
+                .document(userId)
+                .collection("planesNutricionales")
+                .document(planId)
+
+            batch.update(
+                planRef,
+                mapOf(
+                    "estado" to EstadoPlan.ACTIVO,
+                    "fechaActivacion" to System.currentTimeMillis(),
+                    "fechaDesactivacion" to null
+                )
+            )
+
+            batch.commit().await()
+            Log.d(TAG, "✅ Plan nutricional $planId activado")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error activando plan nutricional", e)
@@ -196,16 +256,19 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return false
 
-            db.collection("users").document(userId)
-                .collection("planesNutricion")
+            db.collection("users")
+                .document(userId)
+                .collection("planesNutricionales")
                 .document(planId)
-                .update(mapOf(
-                    "estado" to EstadoPlan.INACTIVO.name,
-                    "fechaDesactivacion" to System.currentTimeMillis()
-                ))
+                .update(
+                    mapOf(
+                        "estado" to EstadoPlan.INACTIVO,
+                        "fechaDesactivacion" to System.currentTimeMillis()
+                    )
+                )
                 .await()
 
-            Log.d(TAG, "✅ Plan nutricional desactivado: $planId")
+            Log.d(TAG, "✅ Plan nutricional $planId desactivado")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error desactivando plan nutricional", e)
@@ -213,42 +276,20 @@ class PlanesRepository {
         }
     }
 
-    private suspend fun desactivarTodosLosPlanesNutricionales(userId: String) {
-        try {
-            val snapshot = db.collection("users").document(userId)
-                .collection("planesNutricion")
-                .whereEqualTo("estado", EstadoPlan.ACTIVO.name)
-                .get()
-                .await()
-
-            snapshot.documents.forEach { doc ->
-                doc.reference.update(mapOf(
-                    "estado" to EstadoPlan.INACTIVO.name,
-                    "fechaDesactivacion" to System.currentTimeMillis()
-                ))
-            }
-
-            Log.d(TAG, "✅ Desactivados ${snapshot.documents.size} planes nutricionales")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error desactivando planes nutricionales", e)
-        }
-    }
-
-    // ===== PLANES DE ENTRENAMIENTO (POR USUARIO) =====
+    // ===== PLANES DE ENTRENAMIENTO =====
 
     suspend fun crearPlanEntrenamiento(plan: PlanEntrenamiento): String? {
         return try {
-            Log.d(TAG, "💪 Creando plan de entrenamiento para ${plan.usuarioId}")
-
-            // ✅ NUEVO: Guardar en subcoleción del usuario
-            db.collection("users").document(plan.usuarioId)
+            val planRef = db.collection("users")
+                .document(plan.usuarioId)
                 .collection("planesEntrenamiento")
-                .document(plan.id)
-                .set(plan)
-                .await()
+                .document()
 
-            Log.d(TAG, "✅ Plan de entrenamiento creado: ${plan.id}")
-            plan.id
+            val planConId = plan.copy(id = planRef.id)
+            planRef.set(planConId).await()
+
+            Log.d(TAG, "✅ Plan de entrenamiento creado: ${planRef.id}")
+            planRef.id
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error creando plan de entrenamiento", e)
             null
@@ -259,8 +300,8 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return emptyList()
 
-            // ✅ NUEVO: Obtener de subcoleción del usuario (más eficiente)
-            val snapshot = db.collection("users").document(userId)
+            val snapshot = db.collection("users")
+                .document(userId)
                 .collection("planesEntrenamiento")
                 .orderBy("fechaCreacion", Query.Direction.DESCENDING)
                 .get()
@@ -270,7 +311,7 @@ class PlanesRepository {
                 it.toObject(PlanEntrenamiento::class.java)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo planes de entrenamiento del usuario", e)
+            Log.e(TAG, "❌ Error obteniendo planes de entrenamiento", e)
             emptyList()
         }
     }
@@ -279,20 +320,36 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return false
 
-            // Primero desactivar todos los planes activos del usuario
-            desactivarTodosLosPlanesEntrenamiento(userId)
-
-            // Activar el plan seleccionado
-            db.collection("users").document(userId)
+            // Primero desactivar todos los planes
+            val planesSnapshot = db.collection("users")
+                .document(userId)
                 .collection("planesEntrenamiento")
-                .document(planId)
-                .update(mapOf(
-                    "estado" to EstadoPlan.ACTIVO.name,
-                    "fechaActivacion" to System.currentTimeMillis()
-                ))
+                .get()
                 .await()
 
-            Log.d(TAG, "✅ Plan de entrenamiento activado: $planId")
+            val batch = db.batch()
+
+            for (doc in planesSnapshot.documents) {
+                batch.update(doc.reference, "estado", EstadoPlan.INACTIVO)
+            }
+
+            // Activar el plan seleccionado
+            val planRef = db.collection("users")
+                .document(userId)
+                .collection("planesEntrenamiento")
+                .document(planId)
+
+            batch.update(
+                planRef,
+                mapOf(
+                    "estado" to EstadoPlan.ACTIVO,
+                    "fechaActivacion" to System.currentTimeMillis(),
+                    "fechaDesactivacion" to null
+                )
+            )
+
+            batch.commit().await()
+            Log.d(TAG, "✅ Plan de entrenamiento $planId activado")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error activando plan de entrenamiento", e)
@@ -304,77 +361,23 @@ class PlanesRepository {
         return try {
             val userId = auth.currentUser?.uid ?: return false
 
-            db.collection("users").document(userId)
+            db.collection("users")
+                .document(userId)
                 .collection("planesEntrenamiento")
                 .document(planId)
-                .update(mapOf(
-                    "estado" to EstadoPlan.INACTIVO.name,
-                    "fechaDesactivacion" to System.currentTimeMillis()
-                ))
+                .update(
+                    mapOf(
+                        "estado" to EstadoPlan.INACTIVO,
+                        "fechaDesactivacion" to System.currentTimeMillis()
+                    )
+                )
                 .await()
 
-            Log.d(TAG, "✅ Plan de entrenamiento desactivado: $planId")
+            Log.d(TAG, "✅ Plan de entrenamiento $planId desactivado")
             true
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error desactivando plan de entrenamiento", e)
             false
-        }
-    }
-
-    private suspend fun desactivarTodosLosPlanesEntrenamiento(userId: String) {
-        try {
-            val snapshot = db.collection("users").document(userId)
-                .collection("planesEntrenamiento")
-                .whereEqualTo("estado", EstadoPlan.ACTIVO.name)
-                .get()
-                .await()
-
-            snapshot.documents.forEach { doc ->
-                doc.reference.update(mapOf(
-                    "estado" to EstadoPlan.INACTIVO.name,
-                    "fechaDesactivacion" to System.currentTimeMillis()
-                ))
-            }
-
-            Log.d(TAG, "✅ Desactivados ${snapshot.documents.size} planes de entrenamiento")
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error desactivando planes de entrenamiento", e)
-        }
-    }
-
-    // ===== FUNCIONES PARA PROFESIONALES =====
-
-    suspend fun obtenerPlanesCreadosPorProfesional(): List<Any> {
-        return try {
-            val profesionalId = auth.currentUser?.uid ?: return emptyList()
-
-            // Obtener planes nutricionales creados por este profesional
-            val planesNutricion = db.collectionGroup("planesNutricion")
-                .whereEqualTo("profesionalId", profesionalId)
-                .orderBy("fechaCreacion", Query.Direction.DESCENDING)
-                .get()
-                .await()
-                .documents.mapNotNull { it.toObject(PlanNutricional::class.java) }
-
-            // Obtener planes de entrenamiento creados por este profesional
-            val planesEntrenamiento = db.collectionGroup("planesEntrenamiento")
-                .whereEqualTo("profesionalId", profesionalId)
-                .orderBy("fechaCreacion", Query.Direction.DESCENDING)
-                .get()
-                .await()
-                .documents.mapNotNull { it.toObject(PlanEntrenamiento::class.java) }
-
-            // Combinar ambos tipos de planes
-            (planesNutricion + planesEntrenamiento).sortedByDescending {
-                when (it) {
-                    is PlanNutricional -> it.fechaCreacion
-                    is PlanEntrenamiento -> it.fechaCreacion
-                    else -> 0L
-                }
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "❌ Error obteniendo planes del profesional", e)
-            emptyList()
         }
     }
 }

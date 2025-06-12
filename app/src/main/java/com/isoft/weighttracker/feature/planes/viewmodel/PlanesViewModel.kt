@@ -35,28 +35,61 @@ class PlanesViewModel : ViewModel() {
 
     // ===== FUNCIONES PARA USUARIOS =====
 
+// Método actualizado en PlanesViewModel.kt
+
+// Método actualizado en PlanesViewModel.kt
+
     fun enviarSolicitudPlan(
         profesionalId: String,
         tipoPlan: TipoPlan,
         descripcion: String,
         nombreUsuario: String,
-        emailUsuario: String
+        emailUsuario: String,
+        // PARÁMETROS DE NUTRICIÓN
+        objetivoNutricion: String = "",
+        nivelActividad: String = "",
+        restricciones: List<String> = emptyList(),
+        restriccionesOtras: String = "",
+        restriccionesMedicas: String = "",
+        // PARÁMETROS DE ENTRENAMIENTO
+        objetivoEntrenamiento: String = "",
+        experienciaPrevia: String = "",
+        disponibilidadSemanal: String = "",
+        equipamientoDisponible: List<String> = emptyList()
     ) {
         viewModelScope.launch {
-            _isLoading.value = true
+            try {
+                _isLoading.value = true
 
-            val success = repository.enviarSolicitudPlan(
-                profesionalId, tipoPlan, descripcion, nombreUsuario, emailUsuario
-            )
+                val resultado = repository.enviarSolicitudPlan(
+                    profesionalId = profesionalId,
+                    tipoPlan = tipoPlan,
+                    descripcion = descripcion,
+                    nombreUsuario = nombreUsuario,
+                    emailUsuario = emailUsuario,
+                    // TODOS LOS PARÁMETROS
+                    objetivoNutricion = objetivoNutricion,
+                    nivelActividad = nivelActividad,
+                    restricciones = restricciones,
+                    restriccionesOtras = restriccionesOtras,
+                    restriccionesMedicas = restriccionesMedicas,
+                    objetivoEntrenamiento = objetivoEntrenamiento,
+                    experienciaPrevia = experienciaPrevia,
+                    disponibilidadSemanal = disponibilidadSemanal,
+                    equipamientoDisponible = equipamientoDisponible
+                )
 
-            if (success) {
-                _mensaje.value = "Solicitud enviada correctamente"
-                cargarSolicitudesUsuario()
-            } else {
-                _mensaje.value = "Error al enviar la solicitud"
+                if (resultado) {
+                    _mensaje.value = "✅ Solicitud enviada correctamente"
+                    cargarSolicitudesUsuario() // Recargar la lista
+                } else {
+                    _mensaje.value = "❌ Error al enviar la solicitud"
+                }
+            } catch (e: Exception) {
+                _mensaje.value = "❌ Error: ${e.message}"
+            } finally {
+                _isLoading.value = false
             }
-
-            _isLoading.value = false
         }
     }
 
@@ -158,7 +191,7 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ MÉTODO ACTUALIZADO: Para crear plan nutricional con categorías
+    // ✅ METODO ACTUALIZADO: Para crear plan nutricional con categorías
     fun crearPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -190,7 +223,7 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ MÉTODO ACTUALIZADO: Para crear plan nutricional desde solicitud (profesionales)
+    // ✅ METODO ACTUALIZADO: Para crear plan nutricional desde solicitud (profesionales)
     fun crearPlanNutricional(
         solicitudId: String,
         plan: PlanNutricional
