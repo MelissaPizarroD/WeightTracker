@@ -21,6 +21,7 @@ import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import com.isoft.weighttracker.feature.planes.model.TipoPlan
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
 import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -117,8 +118,12 @@ fun SolicitudesProfesionalScreen(
                                         solicitudExpandida = if (solicitudExpandida == solicitud.id) null else solicitud.id
                                     },
                                     onAceptar = {
-                                        // Navegar a pantalla de creación de plan
-                                        navController.navigate("crearPlan/${solicitud.id}")
+                                        val solicitudJson = URLEncoder.encode(Gson().toJson(solicitud), StandardCharsets.UTF_8.toString())
+                                        val ruta = when (solicitud.tipoPlan) {
+                                            TipoPlan.NUTRICION -> "crearPlanNutricional/$solicitudJson"
+                                            TipoPlan.ENTRENAMIENTO -> "crearPlanEntrenamiento/$solicitudJson"
+                                        }
+                                        navController.navigate(ruta)
                                     },
                                     onRechazar = {
                                         mostrarDialogoRechazo = solicitud

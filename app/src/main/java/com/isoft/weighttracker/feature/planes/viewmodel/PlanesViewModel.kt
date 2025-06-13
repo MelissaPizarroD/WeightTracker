@@ -317,7 +317,9 @@ class PlanesViewModel : ViewModel() {
 
     fun crearPlanEntrenamiento(
         solicitudId: String,
-        plan: PlanEntrenamiento
+        plan: PlanEntrenamiento,
+        onSuccess: () -> Unit = {},
+        onError: () -> Unit = {}
     ) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -327,13 +329,16 @@ class PlanesViewModel : ViewModel() {
             if (planId != null) {
                 val completada = repository.marcarSolicitudComoCompletada(solicitudId, planId)
                 if (completada) {
-                    _mensaje.value = "Plan de entrenamiento creado exitosamente"
+                    _mensaje.value = "✅ Plan de entrenamiento creado exitosamente"
                     cargarSolicitudesProfesional()
+                    onSuccess()
                 } else {
-                    _mensaje.value = "Plan creado pero error al actualizar solicitud"
+                    _mensaje.value = "⚠️ Plan creado pero error al actualizar solicitud"
+                    onSuccess()
                 }
             } else {
-                _mensaje.value = "Error al crear el plan de entrenamiento"
+                _mensaje.value = "❌ Error al crear el plan de entrenamiento"
+                onError()
             }
 
             _isLoading.value = false

@@ -249,8 +249,13 @@ fun CrearPlanEntrenamientoScreen(
                             observaciones = observacionesGenerales
                         )
 
-                        planesViewModel.crearPlanEntrenamiento(solicitud.id, planEntrenamiento)
-                        navController.popBackStack()
+                        planesViewModel.crearPlanEntrenamiento(
+                            solicitud.id,
+                            planEntrenamiento,
+                            onSuccess = { navController.popBackStack() },
+                            onError = { /* opcional: mostrar error específico */ }
+                        )
+
                     }
                 ) {
                     Text("✅ Sí, crear plan")
