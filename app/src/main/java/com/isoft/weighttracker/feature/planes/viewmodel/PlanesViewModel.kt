@@ -35,10 +35,6 @@ class PlanesViewModel : ViewModel() {
 
     // ===== FUNCIONES PARA USUARIOS =====
 
-// Método actualizado en PlanesViewModel.kt
-
-// Método actualizado en PlanesViewModel.kt
-
     fun enviarSolicitudPlan(
         profesionalId: String,
         tipoPlan: TipoPlan,
@@ -116,16 +112,19 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
+    // ===== FUNCIONES PARA PLANES NUTRICIONALES =====
+
     fun activarPlanNutricional(planId: String) {
         viewModelScope.launch {
             _isLoading.value = true
 
-            val success = repository.activarPlanNutricional(planId)
-            if (success) {
-                _mensaje.value = "Plan nutricional activado"
-                cargarPlanesUsuario()
+            val activado = repository.activarPlanNutricional(planId)
+
+            if (activado) {
+                _mensaje.value = "✅ Plan nutricional activado"
+                cargarPlanesUsuario() // Recargar para mostrar el estado actualizado
             } else {
-                _mensaje.value = "Error al activar el plan"
+                _mensaje.value = "❌ Error al activar el plan"
             }
 
             _isLoading.value = false
@@ -136,28 +135,44 @@ class PlanesViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
 
-            val success = repository.desactivarPlanNutricional(planId)
-            if (success) {
-                _mensaje.value = "Plan nutricional desactivado"
+            val desactivado = repository.desactivarPlanNutricional(planId)
+
+            if (desactivado) {
+                _mensaje.value = "✅ Plan nutricional desactivado"
                 cargarPlanesUsuario()
             } else {
-                _mensaje.value = "Error al desactivar el plan"
+                _mensaje.value = "❌ Error al desactivar el plan"
             }
 
             _isLoading.value = false
         }
     }
 
+    fun obtenerPlanNutricionalPorId(planId: String, onComplete: (PlanNutricional?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val plan = repository.obtenerPlanNutricionalPorId(planId)
+                onComplete(plan)
+            } catch (e: Exception) {
+                _mensaje.value = "❌ Error al obtener plan: ${e.message}"
+                onComplete(null)
+            }
+        }
+    }
+
+    // ===== FUNCIONES PARA PLANES DE ENTRENAMIENTO =====
+
     fun activarPlanEntrenamiento(planId: String) {
         viewModelScope.launch {
             _isLoading.value = true
 
-            val success = repository.activarPlanEntrenamiento(planId)
-            if (success) {
-                _mensaje.value = "Plan de entrenamiento activado"
+            val activado = repository.activarPlanEntrenamiento(planId)
+
+            if (activado) {
+                _mensaje.value = "✅ Plan de entrenamiento activado"
                 cargarPlanesUsuario()
             } else {
-                _mensaje.value = "Error al activar el plan"
+                _mensaje.value = "❌ Error al activar el plan"
             }
 
             _isLoading.value = false
@@ -168,15 +183,28 @@ class PlanesViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
 
-            val success = repository.desactivarPlanEntrenamiento(planId)
-            if (success) {
-                _mensaje.value = "Plan de entrenamiento desactivado"
+            val desactivado = repository.desactivarPlanEntrenamiento(planId)
+
+            if (desactivado) {
+                _mensaje.value = "✅ Plan de entrenamiento desactivado"
                 cargarPlanesUsuario()
             } else {
-                _mensaje.value = "Error al desactivar el plan"
+                _mensaje.value = "❌ Error al desactivar el plan"
             }
 
             _isLoading.value = false
+        }
+    }
+
+    fun obtenerPlanEntrenamientoPorId(planId: String, onComplete: (PlanEntrenamiento?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val plan = repository.obtenerPlanEntrenamientoPorId(planId)
+                onComplete(plan)
+            } catch (e: Exception) {
+                _mensaje.value = "❌ Error al obtener plan: ${e.message}"
+                onComplete(null)
+            }
         }
     }
 
@@ -188,6 +216,44 @@ class PlanesViewModel : ViewModel() {
             val solicitudes = repository.obtenerSolicitudesPendientesProfesional()
             _solicitudesProfesional.value = solicitudes
             _isLoading.value = false
+        }
+    }
+
+    /**
+     * Rechaza una solicitud con un motivo específico
+     */
+    fun rechazarSolicitud(solicitudId: String, motivoRechazo: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+
+            try {
+                val rechazada = repository.rechazarSolicitud(solicitudId, motivoRechazo)
+                if (rechazada) {
+                    _mensaje.value = "✅ Solicitud rechazada correctamente"
+                    cargarSolicitudesProfesional() // Recargar la lista
+                } else {
+                    _mensaje.value = "❌ Error al rechazar la solicitud"
+                }
+            } catch (e: Exception) {
+                _mensaje.value = "❌ Error: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
+    }
+
+    /**
+     * Obtiene una solicitud específica por ID
+     */
+    fun obtenerSolicitudPorId(solicitudId: String, onComplete: (SolicitudPlan?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val solicitud = repository.obtenerSolicitudPorId(solicitudId)
+                onComplete(solicitud)
+            } catch (e: Exception) {
+                _mensaje.value = "❌ Error al obtener solicitud: ${e.message}"
+                onComplete(null)
+            }
         }
     }
 
@@ -288,52 +354,9 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ NUEVO: Metodo para obtener un plan específico por ID
-    fun obtenerPlanPorId(planId: String, onComplete: (PlanNutricional?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                // Como no tienes este método en el repository, podrías agregarlo
-                // o buscar en la lista actual
-                val plan = _planesNutricion.value.find { it.id == planId }
-                onComplete(plan)
-            } catch (e: Exception) {
-                _mensaje.value = "Error al obtener el plan: ${e.message}"
-                onComplete(null)
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
-    // ✅ NUEVO: Método para actualizar un plan existente
-    fun actualizarPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-
-                // Como no tienes método de actualizar en el repository,
-                // usamos el mismo de crear que hace un "set" (upsert)
-                val planId = repository.crearPlanNutricional(plan)
-
-                if (planId != null) {
-                    _mensaje.value = "Plan actualizado exitosamente"
-                    cargarPlanesUsuario() // Recargar planes del usuario
-                    onComplete(true)
-                } else {
-                    _mensaje.value = "Error al actualizar el plan"
-                    onComplete(false)
-                }
-
-            } catch (e: Exception) {
-                _mensaje.value = "Error al actualizar el plan: ${e.message}"
-                onComplete(false)
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
-
+    /**
+     * Limpia el mensaje actual
+     */
     fun limpiarMensaje() {
         _mensaje.value = null
     }

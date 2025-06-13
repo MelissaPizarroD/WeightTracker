@@ -1,5 +1,6 @@
 package com.isoft.weighttracker.feature.planes.model
 
+import com.google.firebase.firestore.Exclude
 import java.util.UUID
 
 enum class TipoPlan {
@@ -55,21 +56,25 @@ data class SolicitudPlan(
     var emailUsuario: String = "",
 
     // CAMPOS ESPECÍFICOS DE NUTRICIÓN
-    var objetivoNutricion: String = "", // ObjetivoNutricional como String
-    var nivelActividad: String = "", // NivelActividad como String
-    var restricciones: List<String> = emptyList(), // Lista de RestriccionAlimentaria como String
-    var restriccionesOtras: String = "", // Campo libre para alergias/intolerancias específicas
-    var restriccionesMedicas: String = "", // Campo libre para restricciones médicas específicas
+    var objetivoNutricion: String = "",
+    var nivelActividad: String = "",
+    var restricciones: List<String> = emptyList(),
+    var restriccionesOtras: String = "",
+    var restriccionesMedicas: String = "",
 
     // CAMPOS ESPECÍFICOS DE ENTRENAMIENTO
-    var objetivoEntrenamiento: String = "", // Objetivo del entrenamiento
-    var experienciaPrevia: String = "", // Nivel de experiencia
-    var disponibilidadSemanal: String = "", // Días disponibles para entrenar
-    var equipamientoDisponible: List<String> = emptyList(), // Equipamiento que tiene
+    var objetivoEntrenamiento: String = "",
+    var experienciaPrevia: String = "",
+    var disponibilidadSemanal: String = "",
+    var equipamientoDisponible: List<String> = emptyList(),
 
     // ID del plan creado (cuando el profesional complete la solicitud)
     var planCreado: String? = null,
-    var fechaCompletada: Long? = null
+    var fechaCompletada: Long? = null,
+
+    // ✅ NUEVOS CAMPOS PARA RECHAZO
+    var motivoRechazo: String? = null,
+    var fechaRechazo: Long? = null
 ) {
     constructor() : this(
         id = UUID.randomUUID().toString(),
@@ -92,10 +97,13 @@ data class SolicitudPlan(
         disponibilidadSemanal = "",
         equipamientoDisponible = emptyList(),
         planCreado = null,
-        fechaCompletada = null
+        fechaCompletada = null,
+        motivoRechazo = null,
+        fechaRechazo = null
     )
 
-    // Helper functions para obtener texto legible
+    // ✅ FIXED: Helper functions con @Exclude para evitar errores de Firebase
+    @Exclude
     fun getObjetivoNutricionTexto(): String {
         return when (objetivoNutricion) {
             "PERDER_PESO" -> "Perder peso"
@@ -107,6 +115,7 @@ data class SolicitudPlan(
         }
     }
 
+    @Exclude
     fun getObjetivoEntrenamientoTexto(): String {
         return when (objetivoEntrenamiento) {
             "PERDER_GRASA" -> "Perder grasa corporal"
@@ -119,6 +128,7 @@ data class SolicitudPlan(
         }
     }
 
+    @Exclude
     fun getExperienciaPreviaTexto(): String {
         return when (experienciaPrevia) {
             "PRINCIPIANTE" -> "Principiante (menos de 6 meses)"
@@ -128,6 +138,7 @@ data class SolicitudPlan(
         }
     }
 
+    @Exclude
     fun getDisponibilidadSemanalTexto(): String {
         return when (disponibilidadSemanal) {
             "DOS_DIAS" -> "2 días por semana"
@@ -139,6 +150,7 @@ data class SolicitudPlan(
         }
     }
 
+    @Exclude
     fun getEquipamientoTexto(): String {
         if (equipamientoDisponible.isEmpty()) return "No especificado"
 
@@ -152,41 +164,5 @@ data class SolicitudPlan(
                 else -> equipo
             }
         }
-    }
-
-    fun getNivelActividadTexto(): String {
-        return when (nivelActividad) {
-            "SEDENTARIO" -> "Sedentario (poco ejercicio)"
-            "LIGERO" -> "Ligero (1-3 días/semana)"
-            "MODERADO" -> "Moderado (3-5 días/semana)"
-            "INTENSO" -> "Intenso (6-7 días/semana)"
-            else -> nivelActividad
-        }
-    }
-
-    fun getRestriccionesTexto(): String {
-        val textoRestricciones = mutableListOf<String>()
-
-        // Agregar restricciones predefinidas
-        restricciones.forEach { restriccion ->
-            when (restriccion) {
-                "SIN_LACTOSA" -> textoRestricciones.add("Sin lactosa")
-                "SIN_GLUTEN" -> textoRestricciones.add("Sin gluten")
-                "VEGETARIANO" -> textoRestricciones.add("Vegetariano")
-                "VEGANO" -> textoRestricciones.add("Vegano")
-                "RESTRICCIONES_MEDICAS" -> textoRestricciones.add("Restricciones médicas")
-            }
-        }
-
-        // Agregar restricciones específicas si las hay
-        if (restriccionesOtras.isNotEmpty()) {
-            textoRestricciones.add("Otras: $restriccionesOtras")
-        }
-
-        if (restriccionesMedicas.isNotEmpty()) {
-            textoRestricciones.add("Médicas: $restriccionesMedicas")
-        }
-
-        return if (textoRestricciones.isEmpty()) "Ninguna" else textoRestricciones.joinToString(", ")
     }
 }

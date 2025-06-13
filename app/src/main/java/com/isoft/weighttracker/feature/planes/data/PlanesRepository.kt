@@ -111,7 +111,6 @@ class PlanesRepository {
                     val solicitudesSnapshot = usuarioDoc.reference
                         .collection("solicitudesPlan")
                         .whereEqualTo("profesionalId", profesionalId)
-                        .whereEqualTo("estado", EstadoSolicitud.PENDIENTE)
                         .get()
                         .await()
 
@@ -125,7 +124,7 @@ class PlanesRepository {
                 }
             }
 
-            Log.d(TAG, "📋 Encontradas ${solicitudes.size} solicitudes pendientes")
+            Log.d(TAG, "📋 Encontradas ${solicitudes.size} solicitudes totales")
             solicitudes.sortedByDescending { it.fechaSolicitud }
 
         } catch (e: Exception) {
@@ -168,6 +167,88 @@ class PlanesRepository {
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error marcando solicitud como completada", e)
             false
+        }
+    }
+
+    /**
+     * Rechaza una solicitud específica con un motivo
+     */
+    suspend fun rechazarSolicitud(solicitudId: String, motivoRechazo: String): Boolean {
+        return try {
+            Log.d(TAG, "🚫 Rechazando solicitud: $solicitudId")
+            Log.d(TAG, "📝 Motivo: $motivoRechazo")
+
+            // Buscar la solicitud en todos los usuarios
+            val usuarios = db.collection("users").get().await()
+
+            for (usuarioDoc in usuarios.documents) {
+                try {
+                    val solicitudDoc = usuarioDoc.reference
+                        .collection("solicitudesPlan")
+                        .document(solicitudId)
+
+                    val solicitudSnapshot = solicitudDoc.get().await()
+                    if (solicitudSnapshot.exists()) {
+                        // Actualizar el estado y agregar el motivo de rechazo
+                        solicitudDoc.update(
+                            mapOf(
+                                "estado" to EstadoSolicitud.RECHAZADA,
+                                "motivoRechazo" to motivoRechazo,
+                                "fechaRechazo" to System.currentTimeMillis()
+                            )
+                        ).await()
+
+                        Log.d(TAG, "✅ Solicitud rechazada exitosamente")
+                        return true
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Error procesando usuario ${usuarioDoc.id}: ${e.message}")
+                }
+            }
+
+            Log.w(TAG, "⚠️ No se encontró la solicitud: $solicitudId")
+            false
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error rechazando solicitud", e)
+            false
+        }
+    }
+
+    /**
+     * Obtiene una solicitud específica por ID
+     */
+    suspend fun obtenerSolicitudPorId(solicitudId: String): SolicitudPlan? {
+        return try {
+            Log.d(TAG, "🔍 Buscando solicitud: $solicitudId")
+
+            // Buscar la solicitud en todos los usuarios
+            val usuarios = db.collection("users").get().await()
+
+            for (usuarioDoc in usuarios.documents) {
+                try {
+                    val solicitudDoc = usuarioDoc.reference
+                        .collection("solicitudesPlan")
+                        .document(solicitudId)
+                        .get()
+                        .await()
+
+                    if (solicitudDoc.exists()) {
+                        val solicitud = solicitudDoc.toObject(SolicitudPlan::class.java)
+                        Log.d(TAG, "✅ Solicitud encontrada: ${solicitud?.nombreUsuario}")
+                        return solicitud
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Error procesando usuario ${usuarioDoc.id}: ${e.message}")
+                }
+            }
+
+            Log.w(TAG, "⚠️ No se encontró la solicitud: $solicitudId")
+            null
+
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error obteniendo solicitud por ID", e)
+            null
         }
     }
 
@@ -276,6 +357,24 @@ class PlanesRepository {
         }
     }
 
+    suspend fun obtenerPlanNutricionalPorId(planId: String): PlanNutricional? {
+        return try {
+            val userId = auth.currentUser?.uid ?: return null
+
+            val doc = db.collection("users")
+                .document(userId)
+                .collection("planesNutricionales")
+                .document(planId)
+                .get()
+                .await()
+
+            doc.toObject(PlanNutricional::class.java)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error obteniendo plan nutricional por ID", e)
+            null
+        }
+    }
+
     // ===== PLANES DE ENTRENAMIENTO =====
 
     suspend fun crearPlanEntrenamiento(plan: PlanEntrenamiento): String? {
@@ -378,6 +477,24 @@ class PlanesRepository {
         } catch (e: Exception) {
             Log.e(TAG, "❌ Error desactivando plan de entrenamiento", e)
             false
+        }
+    }
+
+    suspend fun obtenerPlanEntrenamientoPorId(planId: String): PlanEntrenamiento? {
+        return try {
+            val userId = auth.currentUser?.uid ?: return null
+
+            val doc = db.collection("users")
+                .document(userId)
+                .collection("planesEntrenamiento")
+                .document(planId)
+                .get()
+                .await()
+
+            doc.toObject(PlanEntrenamiento::class.java)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error obteniendo plan de entrenamiento por ID", e)
+            null
         }
     }
 }

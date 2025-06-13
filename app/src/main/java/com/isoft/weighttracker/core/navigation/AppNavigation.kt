@@ -240,19 +240,7 @@ fun AppNavigation(
 
         // === ✅ RUTAS DE PLANES (PROFESIONALES) ===
         composable("solicitudesPlanes") {
-            SolicitudesProfesionalScreen(
-                navController = navController,
-                onSolicitudSelected = { solicitud ->
-                    val solicitudJson = URLEncoder.encode(
-                        Gson().toJson(solicitud),
-                        StandardCharsets.UTF_8.toString()
-                    )
-                    when (solicitud.tipoPlan.name) {
-                        "NUTRICION" -> navController.navigate("crearPlanNutricional/$solicitudJson")
-                        "ENTRENAMIENTO" -> navController.navigate("crearPlanEntrenamiento/$solicitudJson")
-                    }
-                }
-            )
+            SolicitudesProfesionalScreen(navController = navController)
         }
 
         composable(

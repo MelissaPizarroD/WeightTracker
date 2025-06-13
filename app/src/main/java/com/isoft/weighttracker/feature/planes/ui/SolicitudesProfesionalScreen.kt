@@ -3,23 +3,24 @@ package com.isoft.weighttracker.feature.planes.ui
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.gson.Gson
 import com.isoft.weighttracker.feature.planes.model.EstadoSolicitud
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import com.isoft.weighttracker.feature.planes.model.TipoPlan
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
-import com.isoft.weighttracker.shared.UserViewModel
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -27,33 +28,36 @@ import java.util.*
 @Composable
 fun SolicitudesProfesionalScreen(
     navController: NavController,
-    onSolicitudSelected: (SolicitudPlan) -> Unit,
-    userViewModel: UserViewModel = viewModel(),
     planesViewModel: PlanesViewModel = viewModel()
 ) {
-    val currentUser by userViewModel.currentUser.collectAsState()
-    val solicitudesProfesional by planesViewModel.solicitudesProfesional.collectAsState()
+    val solicitudes by planesViewModel.solicitudesProfesional.collectAsState()
     val isLoading by planesViewModel.isLoading.collectAsState()
+    val mensaje by planesViewModel.mensaje.collectAsState()
 
+    var solicitudExpandida by remember { mutableStateOf<String?>(null) }
+    var mostrarDialogoRechazo by remember { mutableStateOf<SolicitudPlan?>(null) }
+
+    // Cargar solicitudes al iniciar
     LaunchedEffect(Unit) {
-        userViewModel.loadUser()
         planesViewModel.cargarSolicitudesProfesional()
+    }
+
+    // Mostrar mensaje si existe
+    mensaje?.let { msg ->
+        LaunchedEffect(msg) {
+            // Aquí podrías mostrar un Snackbar si quieres
+            planesViewModel.limpiarMensaje()
+        }
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
-                    Column {
-                        Text("Solicitudes de Planes")
-                        currentUser?.let {
-                            Text(
-                                "${it.role.replaceFirstChar { char -> char.uppercase() }} - ${it.name}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.8f)
-                            )
-                        }
-                    }
+                    Text(
+                        "📋 Solicitudes de Planes",
+                        fontWeight = FontWeight.Bold
+                    )
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
@@ -67,257 +71,533 @@ fun SolicitudesProfesionalScreen(
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                }
             )
         }
-    ) { padding ->
-        if (isLoading && solicitudesProfesional.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Estadísticas
-                item {
-                    EstadisticasSolicitudes(solicitudes = solicitudesProfesional)
-                }
+    ) { paddingValues ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+        ) {
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.align(Alignment.Center)
+                )
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    if (solicitudes.isEmpty()) {
+                        item {
+                            EmptyStateCard()
+                        }
+                    } else {
+                        // Agrupar por estado
+                        val pendientes = solicitudes.filter { it.estado == EstadoSolicitud.PENDIENTE }
+                        val otras = solicitudes.filter { it.estado != EstadoSolicitud.PENDIENTE }
 
-                if (solicitudesProfesional.isEmpty()) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                        ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(32.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
+                        if (pendientes.isNotEmpty()) {
+                            item {
                                 Text(
-                                    "📭",
-                                    style = MaterialTheme.typography.headlineLarge
-                                )
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    "No hay solicitudes pendientes",
+                                    "⏳ Solicitudes Pendientes (${pendientes.size})",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Las nuevas solicitudes de tus usuarios aparecerán aquí",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            }
+
+                            items(pendientes) { solicitud ->
+                                SolicitudProfesionalCard(
+                                    solicitud = solicitud,
+                                    expandida = solicitudExpandida == solicitud.id,
+                                    onToggleExpansion = {
+                                        solicitudExpandida = if (solicitudExpandida == solicitud.id) null else solicitud.id
+                                    },
+                                    onAceptar = {
+                                        // Navegar a pantalla de creación de plan
+                                        navController.navigate("crearPlan/${solicitud.id}")
+                                    },
+                                    onRechazar = {
+                                        mostrarDialogoRechazo = solicitud
+                                    }
                                 )
                             }
                         }
-                    }
-                } else {
-                    item {
-                        Text(
-                            "📋 Solicitudes Pendientes (${solicitudesProfesional.size})",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
 
-                    items(solicitudesProfesional) { solicitud ->
-                        SolicitudProfesionalCard(
-                            solicitud = solicitud,
-                            onClick = { onSolicitudSelected(solicitud) }
-                        )
+                        if (otras.isNotEmpty()) {
+                            item {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "📝 Historial",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            items(otras) { solicitud ->
+                                SolicitudHistorialCard(solicitud = solicitud)
+                            }
+                        }
                     }
                 }
             }
         }
     }
-}
 
-@Composable
-private fun EstadisticasSolicitudes(
-    solicitudes: List<SolicitudPlan>
-) {
-    val totalEntrenamiento = solicitudes.count { it.tipoPlan == TipoPlan.ENTRENAMIENTO }
-    val totalNutricion = solicitudes.count { it.tipoPlan == TipoPlan.NUTRICION }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Text(
-                "📊 Resumen de Solicitudes",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        totalEntrenamiento.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        "💪 Entrenamiento",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        totalNutricion.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        "🥗 Nutrición",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        solicitudes.size.toString(),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Text(
-                        "📋 Total",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
+    // Diálogo de rechazo
+    mostrarDialogoRechazo?.let { solicitud ->
+        DialogoRechazoSolicitud(
+            solicitud = solicitud,
+            onConfirmar = { motivo ->
+                planesViewModel.rechazarSolicitud(solicitud.id, motivo)
+                mostrarDialogoRechazo = null
+            },
+            onCancelar = {
+                mostrarDialogoRechazo = null
             }
-        }
+        )
     }
 }
 
 @Composable
 private fun SolicitudProfesionalCard(
     solicitud: SolicitudPlan,
-    onClick: () -> Unit
+    expandida: Boolean,
+    onToggleExpansion: () -> Unit,
+    onAceptar: () -> Unit,
+    onRechazar: () -> Unit
 ) {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
-
     Card(
-        onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = when (solicitud.tipoPlan) {
-                TipoPlan.ENTRENAMIENTO -> MaterialTheme.colorScheme.secondaryContainer
-                TipoPlan.NUTRICION -> MaterialTheme.colorScheme.tertiaryContainer
-            }
-        )
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier.padding(16.dp)
         ) {
+            // Header con info básica
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
+                // Icono del tipo de plan
+                Surface(
+                    shape = RoundedCornerShape(8.dp),
+                    color = when (solicitud.tipoPlan) {
+                        TipoPlan.NUTRICION -> MaterialTheme.colorScheme.tertiary
+                        TipoPlan.ENTRENAMIENTO -> MaterialTheme.colorScheme.secondary
+                    },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
                         Text(
-                            solicitud.nombreUsuario,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            when (solicitud.tipoPlan) {
+                                TipoPlan.NUTRICION -> "🥗"
+                                TipoPlan.ENTRENAMIENTO -> "💪"
+                            },
+                            style = MaterialTheme.typography.headlineSmall
                         )
                     }
+                }
 
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        solicitud.emailUsuario,
-                        style = MaterialTheme.typography.bodySmall,
+                        solicitud.nombreUsuario,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        when (solicitud.tipoPlan) {
+                            TipoPlan.NUTRICION -> "Plan Nutricional"
+                            TipoPlan.ENTRENAMIENTO -> "Plan de Entrenamiento"
+                        },
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-
                     Text(
-                        dateFormat.format(Date(solicitud.fechaSolicitud)),
+                        formatearFecha(solicitud.fechaSolicitud),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                AssistChip(
-                    onClick = { },
-                    label = {
-                        Text(
-                            "${if (solicitud.tipoPlan == TipoPlan.ENTRENAMIENTO) "💪" else "🥗"} ${solicitud.tipoPlan.name.lowercase().replaceFirstChar { it.uppercase() }}"
+                IconButton(onClick = onToggleExpansion) {
+                    Icon(
+                        if (expandida) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (expandida) "Contraer" else "Expandir"
+                    )
+                }
+            }
+
+            if (expandida) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Detalles de la solicitud
+                DetalleSolicitud(solicitud)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botones de acción
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onRechazar,
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.error
                         )
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Rechazar")
+                    }
+
+                    Button(
+                        onClick = onAceptar,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(Icons.Default.Check, contentDescription = null)
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Crear Plan")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetalleSolicitud(solicitud: SolicitudPlan) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        // Información del usuario
+        InfoSection(
+            titulo = "👤 Usuario",
+            contenido = {
+                InfoItem("Nombre:", solicitud.nombreUsuario)
+                InfoItem("Email:", solicitud.emailUsuario)
+            }
+        )
+
+        when (solicitud.tipoPlan) {
+            TipoPlan.NUTRICION -> {
+                InfoSection(
+                    titulo = "🥗 Detalles Nutricionales",
+                    contenido = {
+                        if (solicitud.objetivoNutricion.isNotEmpty()) {
+                            InfoItem("Objetivo:", solicitud.getObjetivoNutricionTexto())
+                        }
+                        if (solicitud.nivelActividad.isNotEmpty()) {
+                            InfoItem("Nivel de actividad:", getNivelActividadTexto(solicitud.nivelActividad))
+                        }
+                        if (solicitud.restricciones.isNotEmpty()) {
+                            InfoItem("Restricciones:", solicitud.restricciones.joinToString(", ") { getRestriccionTexto(it) })
+                        }
+                        if (solicitud.restriccionesOtras.isNotEmpty()) {
+                            InfoItem("Alergias/Intolerancias:", solicitud.restriccionesOtras)
+                        }
+                        if (solicitud.restriccionesMedicas.isNotEmpty()) {
+                            InfoItem("Restricciones médicas:", solicitud.restriccionesMedicas)
+                        }
+                    }
+                )
+            }
+            TipoPlan.ENTRENAMIENTO -> {
+                InfoSection(
+                    titulo = "💪 Detalles de Entrenamiento",
+                    contenido = {
+                        if (solicitud.objetivoEntrenamiento.isNotEmpty()) {
+                            InfoItem("Objetivo:", solicitud.getObjetivoEntrenamientoTexto())
+                        }
+                        if (solicitud.experienciaPrevia.isNotEmpty()) {
+                            InfoItem("Experiencia:", solicitud.getExperienciaPreviaTexto())
+                        }
+                        if (solicitud.disponibilidadSemanal.isNotEmpty()) {
+                            InfoItem("Disponibilidad:", solicitud.getDisponibilidadSemanalTexto())
+                        }
+                        if (solicitud.equipamientoDisponible.isNotEmpty()) {
+                            InfoItem("Equipamiento:", solicitud.getEquipamientoTexto())
+                        }
+                    }
+                )
+            }
+        }
+
+        if (solicitud.descripcion.isNotEmpty()) {
+            InfoSection(
+                titulo = "📝 Descripción adicional",
+                contenido = {
+                    Text(
+                        solicitud.descripcion,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoSection(
+    titulo: String,
+    contenido: @Composable () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            Text(
+                titulo,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            contenido()
+        }
+    }
+}
+
+@Composable
+private fun InfoItem(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.width(120.dp)
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SolicitudHistorialCard(solicitud: SolicitudPlan) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = when (solicitud.estado) {
+                EstadoSolicitud.COMPLETADA -> MaterialTheme.colorScheme.surfaceVariant
+                EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Icono de estado
+            Surface(
+                shape = RoundedCornerShape(8.dp),
+                color = when (solicitud.estado) {
+                    EstadoSolicitud.COMPLETADA -> Color(0xFF4CAF50)
+                    EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.surfaceVariant
+                },
+                modifier = Modifier.size(40.dp)
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        when (solicitud.estado) {
+                            EstadoSolicitud.COMPLETADA -> Icons.Default.Check
+                            EstadoSolicitud.RECHAZADA -> Icons.Default.Close
+                            else -> Icons.Default.Info
+                        },
+                        contentDescription = null,
+                        tint = Color.White
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    solicitud.nombreUsuario,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    when (solicitud.tipoPlan) {
+                        TipoPlan.NUTRICION -> "Plan Nutricional"
+                        TipoPlan.ENTRENAMIENTO -> "Plan de Entrenamiento"
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                Text(
+                    when (solicitud.estado) {
+                        EstadoSolicitud.COMPLETADA -> "✅ Completada"
+                        EstadoSolicitud.RECHAZADA -> "❌ Rechazada"
+                        else -> "ℹ️ ${solicitud.estado.name}"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = when (solicitud.estado) {
+                        EstadoSolicitud.COMPLETADA -> Color(0xFF4CAF50)
+                        EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
                     }
                 )
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
             Text(
-                "Descripción:",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
+                formatearFecha(solicitud.fechaSolicitud),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
 
+@Composable
+private fun EmptyStateCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Text(
-                solicitud.descripcion,
-                style = MaterialTheme.typography.bodyMedium,
-                maxLines = 3
+                "📋",
+                style = MaterialTheme.typography.displayMedium
             )
+            Spacer(modifier = Modifier.height(16.dp))
+            Text(
+                "No tienes solicitudes",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                "Cuando los usuarios te soliciten planes, aparecerán aquí para que puedas revisarlos y crear los planes correspondientes.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(12.dp))
+@Composable
+private fun DialogoRechazoSolicitud(
+    solicitud: SolicitudPlan,
+    onConfirmar: (String) -> Unit,
+    onCancelar: () -> Unit
+) {
+    var motivoRechazo by remember { mutableStateOf("") }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
+    AlertDialog(
+        onDismissRequest = onCancelar,
+        title = {
+            Text(
+                "❌ Rechazar Solicitud",
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Column {
+                Text(
+                    "¿Estás seguro de que quieres rechazar la solicitud de ${solicitud.nombreUsuario}?",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = motivoRechazo,
+                    onValueChange = { motivoRechazo = it },
+                    label = { Text("Motivo del rechazo *") },
+                    placeholder = { Text("Explica por qué no puedes crear este plan...") },
+                    modifier = Modifier.fillMaxWidth(),
+                    maxLines = 4,
+                    singleLine = false
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    "El usuario verá este motivo en su solicitud.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    if (motivoRechazo.trim().isNotEmpty()) {
+                        onConfirmar(motivoRechazo.trim())
+                    }
+                },
+                enabled = motivoRechazo.trim().isNotEmpty(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                )
             ) {
-                Button(
-                    onClick = onClick,
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = MaterialTheme.colorScheme.primary
-                    )
-                ) {
-                    Text("Crear Plan")
-                }
+                Text("Rechazar")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onCancelar) {
+                Text("Cancelar")
             }
         }
+    )
+}
+
+// Funciones helper
+private fun formatearFecha(timestamp: Long): String {
+    val sdf = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+    return sdf.format(Date(timestamp))
+}
+
+// Funciones helper para evitar que Firebase las mapee como campos
+private fun getNivelActividadTexto(nivel: String): String {
+    return when (nivel) {
+        "SEDENTARIO" -> "Sedentario (poco o ningún ejercicio)"
+        "LIGERO" -> "Ligero (ejercicio ligero 1-3 días/semana)"
+        "MODERADO" -> "Moderado (ejercicio moderado 3-5 días/semana)"
+        "INTENSO" -> "Intenso (ejercicio intenso 6-7 días/semana)"
+        else -> nivel
+    }
+}
+
+private fun getRestriccionTexto(restriccion: String): String {
+    return when (restriccion) {
+        "SIN_LACTOSA" -> "Sin lactosa"
+        "SIN_GLUTEN" -> "Sin gluten"
+        "VEGETARIANO" -> "Vegetariano"
+        "VEGANO" -> "Vegano"
+        "RESTRICCIONES_MEDICAS" -> "Restricciones médicas"
+        else -> restriccion
     }
 }

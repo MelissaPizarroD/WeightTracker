@@ -1067,9 +1067,14 @@ private fun SolicitudCard(solicitud: SolicitudPlan) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = when (solicitud.tipoPlan) {
-                TipoPlan.ENTRENAMIENTO -> MaterialTheme.colorScheme.secondaryContainer
-                TipoPlan.NUTRICION -> MaterialTheme.colorScheme.tertiaryContainer
+            containerColor = when (solicitud.estado) {
+                EstadoSolicitud.PENDIENTE -> when (solicitud.tipoPlan) {
+                    TipoPlan.ENTRENAMIENTO -> MaterialTheme.colorScheme.secondaryContainer
+                    TipoPlan.NUTRICION -> MaterialTheme.colorScheme.tertiaryContainer
+                }
+                EstadoSolicitud.COMPLETADA -> MaterialTheme.colorScheme.primaryContainer
+                EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                else -> MaterialTheme.colorScheme.surfaceVariant
             }
         )
     ) {
@@ -1109,7 +1114,19 @@ private fun SolicitudCard(solicitud: SolicitudPlan) {
                                 EstadoSolicitud.RECHAZADA -> "❌ Rechazada"
                             }
                         )
-                    }
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        containerColor = when (solicitud.estado) {
+                            EstadoSolicitud.COMPLETADA -> MaterialTheme.colorScheme.primary
+                            EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.surface
+                        },
+                        labelColor = when (solicitud.estado) {
+                            EstadoSolicitud.COMPLETADA -> MaterialTheme.colorScheme.onPrimary
+                            EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.onError
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+                    )
                 )
             }
 
@@ -1121,6 +1138,7 @@ private fun SolicitudCard(solicitud: SolicitudPlan) {
                 maxLines = 3
             )
 
+            // Mostrar observaciones si existen
             if (solicitud.observaciones.isNotBlank()) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -1130,14 +1148,80 @@ private fun SolicitudCard(solicitud: SolicitudPlan) {
                 )
             }
 
+            // ✅ NUEVO: Mostrar motivo de rechazo si fue rechazada
+            if (solicitud.estado == EstadoSolicitud.RECHAZADA && !solicitud.motivoRechazo.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            "❌ Motivo del rechazo:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            solicitud.motivoRechazo!!,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+
+                        // Mostrar fecha de rechazo si está disponible
+                        solicitud.fechaRechazo?.let { fechaRechazo ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Rechazada el: ${dateFormat.format(Date(fechaRechazo))}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Mostrar mensaje de plan completado
             if (solicitud.estado == EstadoSolicitud.COMPLETADA && solicitud.planCreado != null) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    "✨ Tu plan ha sido creado y está disponible en la sección de planes",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
+                Spacer(modifier = Modifier.height(12.dp))
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            "✨ ¡Tu plan ha sido creado!",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "Tu plan está disponible en la sección 'Mis Planes'. ¡Comienza a seguirlo para alcanzar tus objetivos!",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+
+                        // Mostrar fecha de completado si está disponible
+                        solicitud.fechaCompletada?.let { fechaCompletada ->
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Completada el: ${dateFormat.format(Date(fechaCompletada))}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                        }
+                    }
+                }
             }
         }
     }
