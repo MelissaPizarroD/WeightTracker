@@ -1,16 +1,14 @@
 package com.isoft.weighttracker.feature.planes.ui
 
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -23,12 +21,33 @@ import androidx.navigation.NavController
 import com.isoft.weighttracker.core.data.UserRepository
 import com.isoft.weighttracker.core.model.PersonaProfile
 import com.isoft.weighttracker.feature.antropometria.model.Antropometria
-import com.isoft.weighttracker.feature.planes.model.Ejercicio
-import com.isoft.weighttracker.feature.planes.model.PlanEntrenamiento
-import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
+import com.isoft.weighttracker.feature.planes.model.*
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
+import com.isoft.weighttracker.feature.planes.utils.PlanEntrenamientoUtils
+import com.isoft.weighttracker.feature.planes.utils.EjercicioMapper
+import com.isoft.weighttracker.feature.planes.utils.AntropometriaUtils
 import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
+
+// Modelos simplificados para el formulario
+data class SesionEntrenamiento(
+    var dia: String = "",
+    var nombre: String = "",
+    var tipoSesion: String = "FUERZA", // FUERZA, CARDIO, MIXTO
+    var gruposMusculares: List<String> = emptyList(),
+    var ejercicios: List<EjercicioSimple> = emptyList(),
+    var duracionMinutos: Int = 60,
+    var notas: String = ""
+)
+
+data class EjercicioSimple(
+    var nombre: String = "",
+    var series: String = "",
+    var repeticiones: String = "",
+    var peso: String = "",
+    var descanso: String = "",
+    var notas: String = ""
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,52 +58,59 @@ fun CrearPlanEntrenamientoScreen(
     planesViewModel: PlanesViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val currentUser by userViewModel.currentUser.collectAsState()
     val isLoading by planesViewModel.isLoading.collectAsState()
     val mensaje by planesViewModel.mensaje.collectAsState()
 
-    // Estados para el plan de entrenamiento
-    var tipoEjercicio by remember { mutableStateOf("Cardio") }
-    var lugarRealizacion by remember { mutableStateOf("gimnasio") }
-    var materialesSugeridos by remember { mutableStateOf("") }
-    var frecuencia by remember { mutableStateOf("3 veces por semana") }
-    var dificultad by remember { mutableStateOf("Medio") }
-    var duracionEstimada by remember { mutableStateOf("") }
-    var observaciones by remember { mutableStateOf("") }
-
-    // Lista de ejercicios
-    var ejercicios by remember { mutableStateOf(listOf<Ejercicio>()) }
-
-    // ✅ NUEVOS: Estados para datos del usuario
+    // ✅ NUEVOS ESTADOS: Datos del usuario para mostrar información completa
     var personaProfile by remember { mutableStateOf<PersonaProfile?>(null) }
     var antropometriaReciente by remember { mutableStateOf<Antropometria?>(null) }
+    var cargandoDatosUsuario by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit) {
-        userViewModel.loadUser() // ← ASEGURARSE QUE ESTO SE EJECUTE
-    }
+    // Estados del formulario simplificado
+    var nombrePlan by remember { mutableStateOf("Plan de ${solicitud.nombreUsuario}") }
+    var objetivo by remember { mutableStateOf(solicitud.objetivoEntrenamiento) }
+    var duracionSemanas by remember { mutableStateOf("8") }
+    var frecuenciaSemanal by remember { mutableStateOf(solicitud.disponibilidadSemanal) }
+    var observacionesGenerales by remember { mutableStateOf("") }
 
-    // ✅ ACTUALIZADO: Cargar datos del usuario que solicitó el plan
+    // Lista de sesiones de entrenamiento
+    var sesiones by remember { mutableStateOf(listOf<SesionEntrenamiento>()) }
+
+    // Estado para mostrar diálogo de confirmación
+    var mostrarDialogoConfirmacion by remember { mutableStateOf(false) }
+
+    // ✅ CARGAR DATOS DEL USUARIO al iniciar
     LaunchedEffect(solicitud.usuarioId) {
-        scope.launch {
-            try {
-                val userRepo = UserRepository()
-                // Cargar datos del usuario que solicitó el plan
-                personaProfile = userRepo.getPersonaProfileByUserId(solicitud.usuarioId)
-                antropometriaReciente = userRepo.getAntropometriaRecienteByUserId(solicitud.usuarioId)
-            } catch (e: Exception) {
-                Log.e("CrearPlanEntrenamiento", "Error cargando datos del usuario", e)
-            }
+        cargandoDatosUsuario = true
+        try {
+            val userRepository = UserRepository()
+
+            // Cargar perfil de la persona
+            personaProfile = userRepository.getPersonaProfileByUserId(solicitud.usuarioId)
+
+            // Cargar antropometría más reciente
+            antropometriaReciente = userRepository.getAntropometriaRecienteByUserId(solicitud.usuarioId)
+
+        } catch (e: Exception) {
+            Toast.makeText(context, "Error cargando datos del usuario: ${e.message}", Toast.LENGTH_SHORT).show()
+        } finally {
+            cargandoDatosUsuario = false
         }
     }
 
-    LaunchedEffect(mensaje) {
-        mensaje?.let {
-            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+    // Generar sesiones iniciales basadas en la frecuencia
+    LaunchedEffect(frecuenciaSemanal) {
+        if (sesiones.isEmpty()) {
+            sesiones = PlanEntrenamientoUtils.generarSesionesIniciales(frecuenciaSemanal)
+        }
+    }
+
+    // Mostrar mensaje
+    mensaje?.let { msg ->
+        LaunchedEffect(msg) {
+            Toast.makeText(context, msg, Toast.LENGTH_LONG).show()
             planesViewModel.limpiarMensaje()
-            if (it.contains("exitosamente")) {
-                navController.navigateUp()
-            }
         }
     }
 
@@ -104,540 +130,782 @@ fun CrearPlanEntrenamientoScreen(
                 )
             )
         }
-    ) { padding ->
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding)
+                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ✅ ACTUALIZADA: Información del usuario CON antecedentes médicos
-            Card(
+            // Información del usuario (con datos completos)
+            InfoUsuarioCard(
+                solicitud = solicitud,
+                personaProfile = personaProfile,
+                antropometriaReciente = antropometriaReciente,
+                cargandoDatos = cargandoDatosUsuario
+            )
+
+            // Información básica del plan
+            InformacionBasicaPlan(
+                nombrePlan = nombrePlan,
+                onNombrePlanChange = { nombrePlan = it },
+                objetivo = objetivo,
+                onObjetivoChange = { objetivo = it },
+                duracionSemanas = duracionSemanas,
+                onDuracionSemanasChange = { duracionSemanas = it },
+                frecuenciaSemanal = frecuenciaSemanal,
+                onFrecuenciaSemanalChange = {
+                    frecuenciaSemanal = it
+                    sesiones = PlanEntrenamientoUtils.generarSesionesIniciales(it)
+                }
+            )
+
+            // Sesiones de entrenamiento
+            SesionesEntrenamientoSection(
+                sesiones = sesiones,
+                onSesionesChange = { sesiones = it }
+            )
+
+            // Observaciones generales
+            ObservacionesGeneralesCard(
+                observaciones = observacionesGenerales,
+                onObservacionesChange = { observacionesGenerales = it }
+            )
+
+            // Botón crear plan
+            Button(
+                onClick = { mostrarDialogoConfirmacion = true },
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                enabled = !isLoading && nombrePlan.isNotBlank() && sesiones.isNotEmpty()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(
-                            Icons.Default.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimaryContainer
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                } else {
+                    Icon(Icons.Default.Save, contentDescription = null)
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Crear Plan de Entrenamiento")
+            }
+        }
+    }
+
+    // Diálogo de confirmación
+    if (mostrarDialogoConfirmacion) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoConfirmacion = false },
+            title = {
+                Text(
+                    "💪 Confirmar Plan de Entrenamiento",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column {
+                    Text("¿Estás seguro de enviar este plan de entrenamiento a:")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "👤 ${solicitud.nombreUsuario}",
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text("📋 Plan: $nombrePlan")
+                    Text("⏱️ Duración: $duracionSemanas semanas")
+                    Text("📅 Frecuencia: ${PlanEntrenamientoUtils.getFrecuenciaTexto(frecuenciaSemanal)}")
+                    Text("🏋️ Sesiones: ${sesiones.size}")
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        mostrarDialogoConfirmacion = false
+
+                        // Crear el plan con la nueva estructura
+                        val planEntrenamiento = PlanEntrenamiento(
+                            usuarioId = solicitud.usuarioId,
+                            profesionalId = currentUser?.uid ?: "",
+                            nombreProfesional = currentUser?.name ?: "",
+                            // ✅ NUEVOS CAMPOS
+                            nombrePlan = nombrePlan,
+                            objetivo = objetivo,
+                            duracionSemanas = duracionSemanas.toIntOrNull() ?: 8,
+                            frecuenciaSemanal = frecuenciaSemanal,
+                            nivelDificultad = PlanEntrenamientoUtils.determinarNivelDificultad(solicitud.experienciaPrevia),
+                            tipoPrograma = "PERSONALIZADO",
+                            sesiones = EjercicioMapper.convertirASesionesReales(sesiones),
+                            equipamientoNecesario = PlanEntrenamientoUtils.extraerEquipamientoNecesario(sesiones, solicitud),
+                            lugarRealizacion = PlanEntrenamientoUtils.determinarLugarRealizacion(solicitud.equipamientoDisponible),
+                            adaptaciones = PlanEntrenamientoUtils.extraerAdaptaciones(solicitud),
+                            progresion = PlanEntrenamientoUtils.generarProgresion(objetivo, duracionSemanas),
+                            observacionesGenerales = observacionesGenerales,
+                            // ✅ CAMPOS DEPRECATED para compatibilidad
+                            tipoEjercicio = PlanEntrenamientoUtils.mapearObjetivoATipoEjercicio(objetivo),
+                            materialesSugeridos = PlanEntrenamientoUtils.extraerMaterialesDeEjercicios(sesiones),
+                            frecuencia = PlanEntrenamientoUtils.getFrecuenciaTexto(frecuenciaSemanal),
+                            dificultad = PlanEntrenamientoUtils.determinarNivelDificultad(solicitud.experienciaPrevia),
+                            duracionEstimada = PlanEntrenamientoUtils.calcularDuracionPromedio(sesiones) * 60,
+                            ejercicios = EjercicioMapper.convertirSesionesAEjerciciosLegacy(sesiones),
+                            observaciones = observacionesGenerales
                         )
-                        Text(
-                            "Información del Usuario",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
+
+                        planesViewModel.crearPlanEntrenamiento(solicitud.id, planEntrenamiento)
+                        navController.popBackStack()
                     }
+                ) {
+                    Text("✅ Sí, crear plan")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { mostrarDialogoConfirmacion = false }
+                ) {
+                    Text("❌ Cancelar")
+                }
+            }
+        )
+    }
+}
 
-                    Spacer(modifier = Modifier.height(12.dp))
+@Composable
+private fun InfoUsuarioCard(
+    solicitud: SolicitudPlan,
+    personaProfile: PersonaProfile?,
+    antropometriaReciente: Antropometria?,
+    cargandoDatos: Boolean
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "👤 Información del Usuario",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
 
-                    // Datos básicos
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Información básica de la solicitud
+            Text("📝 Nombre: ${solicitud.nombreUsuario}")
+            Text("📧 Email: ${solicitud.emailUsuario}")
+            Text("🎯 Objetivo: ${solicitud.getObjetivoEntrenamientoTexto()}")
+            Text("💪 Experiencia: ${solicitud.getExperienciaPreviaTexto()}")
+            Text("📅 Disponibilidad: ${solicitud.getDisponibilidadSemanalTexto()}")
+
+            if (solicitud.equipamientoDisponible.isNotEmpty()) {
+                Text("🏋️ Equipamiento: ${solicitud.getEquipamientoTexto()}")
+            }
+
+            if (solicitud.descripcion.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    "💬 Descripción: ${solicitud.descripcion}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // ✅ DATOS FÍSICOS Y MÉDICOS COMPLETOS
+            if (cargandoDatos) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        "👤 Nombre: ${solicitud.nombreUsuario}",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        style = MaterialTheme.typography.bodyMedium
+                        "Cargando datos físicos...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    Text(
-                        "📧 Email: ${solicitud.emailUsuario}",
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+                }
+            } else {
+                Text(
+                    "📊 Datos Físicos y Médicos:",
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.bodyMedium
+                )
 
-                    // ✅ DATOS MÉDICOS Y ANTROPOMÉTRICOS
-                    personaProfile?.let { profile ->
-                        Spacer(modifier = Modifier.height(8.dp))
+                personaProfile?.let { profile ->
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                        Text(
-                            "📋 Datos Médicos y Físicos:",
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    Text("🎂 Edad: ${profile.edad} años")
+                    Text("⚧ Sexo: ${profile.sexo.replaceFirstChar { it.uppercase() }}")
+                    Text("📏 Estatura: ${profile.estatura} cm")
 
-                        Text(
-                            "🎂 Edad: ${profile.edad} años",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    // Mostrar IMC si tenemos antropometría
+                    antropometriaReciente?.let { antro ->
+                        val imc = AntropometriaUtils.calcularIMCConCm(antro.peso, profile.estatura)
+                        Text("⚖️ Peso actual: ${antro.peso} kg")
+                        Text("📈 IMC: ${"%.1f".format(imc)} (${AntropometriaUtils.clasificarIMC(imc)})")
 
-                        Text(
-                            "⚧ Sexo: ${profile.sexo.replaceFirstChar { it.uppercase() }}",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-
-                        Text(
-                            "📏 Estatura: ${profile.estatura} cm",
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-
-                        // Antropometría reciente
-                        antropometriaReciente?.let { antro ->
-                            Text(
-                                "⚖️ Peso actual: ${antro.peso} kg (IMC: ${"%.1f".format(antro.imc)})",
-                                color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                style = MaterialTheme.typography.bodySmall
+                        if (antro.porcentajeGrasa > 0) {
+                            val clasificacionGrasa = AntropometriaUtils.clasificarPorcentajeGrasa(
+                                antro.porcentajeGrasa,
+                                profile.sexo,
+                                profile.edad
                             )
+                            Text("🔥 Grasa corporal: ${"%.1f".format(antro.porcentajeGrasa)}% ($clasificacionGrasa)")
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // ✅ ANTECEDENTES MÉDICOS - MUY IMPORTANTE PARA ENTRENAMIENTO
-                        Text(
-                            "🏥 Antecedentes Médicos:",
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
-                            )
-                        ) {
+                        if (antro.fecha > 0) {
+                            val diasAtras = AntropometriaUtils.diasTranscurridos(antro.fecha)
+                            val esReciente = AntropometriaUtils.sonDatosRecientes(antro.fecha)
                             Text(
-                                text = if (profile.antecedentesMedicos.isNotBlank()) {
-                                    profile.antecedentesMedicos
-                                } else {
-                                    "Sin antecedentes médicos registrados"
-                                },
-                                modifier = Modifier.padding(12.dp),
+                                "📅 Última medición: hace $diasAtras días${if (esReciente) " ✅" else " ⚠️"}",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (profile.antecedentesMedicos.isNotBlank()) {
-                                    MaterialTheme.colorScheme.onSurface
-                                } else {
-                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                                }
+                                color = if (esReciente)
+                                    MaterialTheme.colorScheme.primary
+                                else
+                                    MaterialTheme.colorScheme.error
                             )
                         }
 
-                        // ✅ ADVERTENCIA ESPECIAL PARA ENTRENADORES
-                        if (profile.antecedentesMedicos.isNotBlank()) {
-                            Spacer(modifier = Modifier.height(8.dp))
+                        // ✅ VERIFICAR SI REQUIERE SUPERVISIÓN MÉDICA
+                        val (requiereSupervision, razonSupervision) = AntropometriaUtils.requiereSupervisionMedica(
+                            imc, profile.edad, profile.antecedentesMedicos
+                        )
+
+                        if (requiereSupervision) {
+                            Spacer(modifier = Modifier.height(4.dp))
                             Card(
-                                modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.7f)
+                                    containerColor = MaterialTheme.colorScheme.errorContainer
                                 )
                             ) {
+                                Column(modifier = Modifier.padding(8.dp)) {
+                                    Text(
+                                        "⚠️ ATENCIÓN MÉDICA",
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Text(
+                                        razonSupervision,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                }
+                            }
+                        }
+                    } ?: Text(
+                        "⚠️ Sin datos antropométricos recientes",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+
+                    // ✅ ANTECEDENTES MÉDICOS - CRÍTICO PARA ENTRENAMIENTO
+                    if (profile.antecedentesMedicos.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Card(
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Column(modifier = Modifier.padding(8.dp)) {
                                 Text(
-                                    text = "⚠️ IMPORTANTE: Considera los antecedentes médicos al diseñar ejercicios. Consulta con médico si es necesario.",
-                                    modifier = Modifier.padding(12.dp),
+                                    "🏥 Antecedentes Médicos:",
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.error,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    profile.antecedentesMedicos,
                                     style = MaterialTheme.typography.bodySmall,
-                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Text(
-                        "💬 Solicitud:",
-                        fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        solicitud.descripcion,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }
-
-            // Configuración del plan
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        "⚙️ Configuración del Plan",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Tipo de ejercicio
-                    Text(
-                        "Tipo de Ejercicio:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Cardio", "Fuerza", "Resistencia").forEach { tipo ->
-                            FilterChip(
-                                onClick = { tipoEjercicio = tipo },
-                                label = { Text(tipo) },
-                                selected = tipoEjercicio == tipo
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Lugar de realización
-                    Text(
-                        "Lugar de Realización:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("casa", "gimnasio").forEach { lugar ->
-                            FilterChip(
-                                onClick = { lugarRealizacion = lugar },
-                                label = { Text(lugar.replaceFirstChar { it.uppercase() }) },
-                                selected = lugarRealizacion == lugar
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Frecuencia
-                    Text(
-                        "Frecuencia:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("2 veces por semana", "3 veces por semana", "4 o mas veces").forEach { freq ->
-                            FilterChip(
-                                onClick = { frecuencia = freq },
-                                label = { Text(freq) },
-                                selected = frecuencia == freq
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Dificultad
-                    Text(
-                        "Dificultad:",
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Medium
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Facil", "Medio", "Dificil").forEach { nivel ->
-                            FilterChip(
-                                onClick = { dificultad = nivel },
-                                label = { Text(nivel) },
-                                selected = dificultad == nivel
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Materiales y duración
-                    OutlinedTextField(
-                        value = materialesSugeridos,
-                        onValueChange = { materialesSugeridos = it },
-                        label = { Text("Materiales sugeridos") },
-                        placeholder = { Text("Ej: Mancuernas, banda elástica, colchoneta") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 2
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = duracionEstimada,
-                        onValueChange = { duracionEstimada = it },
-                        label = { Text("Duración estimada (minutos)") },
-                        placeholder = { Text("Ej: 45") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
-                    )
-                }
-            }
-
-            // Lista de ejercicios
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            "💪 Ejercicios del Plan",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-
-                        IconButton(
-                            onClick = {
-                                ejercicios = ejercicios + Ejercicio()
-                            }
-                        ) {
-                            Icon(Icons.Default.Add, contentDescription = "Agregar ejercicio")
-                        }
-                    }
-
-                    if (ejercicios.isEmpty()) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text(
-                            "No hay ejercicios agregados. Toca el botón + para agregar ejercicios.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
                     } else {
-                        ejercicios.forEachIndexed { index, ejercicio ->
-                            Spacer(modifier = Modifier.height(16.dp))
-                            EjercicioCard(
-                                ejercicio = ejercicio,
-                                onEjercicioChanged = { ejercicioActualizado ->
-                                    ejercicios = ejercicios.toMutableList().apply {
-                                        this[index] = ejercicioActualizado
-                                    }
-                                },
-                                onEliminar = {
-                                    ejercicios = ejercicios.toMutableList().apply {
-                                        removeAt(index)
-                                    }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            "✅ Sin antecedentes médicos reportados",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                } ?: Text(
+                    "❌ No se pudieron cargar los datos del perfil",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun InformacionBasicaPlan(
+    nombrePlan: String,
+    onNombrePlanChange: (String) -> Unit,
+    objetivo: String,
+    onObjetivoChange: (String) -> Unit,
+    duracionSemanas: String,
+    onDuracionSemanasChange: (String) -> Unit,
+    frecuenciaSemanal: String,
+    onFrecuenciaSemanalChange: (String) -> Unit
+) {
+    Card {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "📋 Información Básica del Plan",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Nombre del plan
+            OutlinedTextField(
+                value = nombrePlan,
+                onValueChange = onNombrePlanChange,
+                label = { Text("Nombre del plan") },
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Objetivo
+            val objetivos = listOf(
+                "PERDER_GRASA" to "Perder grasa corporal",
+                "GANAR_MUSCULO" to "Ganar masa muscular",
+                "FUERZA" to "Aumentar fuerza",
+                "RESISTENCIA" to "Mejorar resistencia",
+                "TONIFICAR" to "Tonificar y definir",
+                "REHABILITACION" to "Rehabilitación"
+            )
+
+            var expandedObjetivo by remember { mutableStateOf(false) }
+            ExposedDropdownMenuBox(
+                expanded = expandedObjetivo,
+                onExpandedChange = { expandedObjetivo = !expandedObjetivo }
+            ) {
+                OutlinedTextField(
+                    value = objetivos.find { it.first == objetivo }?.second ?: "Seleccionar objetivo",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Objetivo principal") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedObjetivo) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor()
+                )
+
+                ExposedDropdownMenu(
+                    expanded = expandedObjetivo,
+                    onDismissRequest = { expandedObjetivo = false }
+                ) {
+                    objetivos.forEach { (valor, texto) ->
+                        DropdownMenuItem(
+                            text = { Text(texto) },
+                            onClick = {
+                                onObjetivoChange(valor)
+                                expandedObjetivo = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Duración
+                OutlinedTextField(
+                    value = duracionSemanas,
+                    onValueChange = onDuracionSemanasChange,
+                    label = { Text("Semanas") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                // Frecuencia
+                val frecuencias = listOf(
+                    "DOS_DIAS" to "2 días/semana",
+                    "TRES_DIAS" to "3 días/semana",
+                    "CUATRO_DIAS" to "4 días/semana",
+                    "CINCO_DIAS" to "5 días/semana",
+                    "SEIS_DIAS" to "6 días/semana"
+                )
+
+                var expandedFrecuencia by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expandedFrecuencia,
+                    onExpandedChange = { expandedFrecuencia = !expandedFrecuencia },
+                    modifier = Modifier.weight(1f)
+                ) {
+                    OutlinedTextField(
+                        value = frecuencias.find { it.first == frecuenciaSemanal }?.second ?: "Frecuencia",
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Frecuencia") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedFrecuencia) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor()
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expandedFrecuencia,
+                        onDismissRequest = { expandedFrecuencia = false }
+                    ) {
+                        frecuencias.forEach { (valor, texto) ->
+                            DropdownMenuItem(
+                                text = { Text(texto) },
+                                onClick = {
+                                    onFrecuenciaSemanalChange(valor)
+                                    expandedFrecuencia = false
                                 }
                             )
                         }
                     }
                 }
-            }
-
-            // Observaciones
-            Card {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        "📝 Observaciones",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    OutlinedTextField(
-                        value = observaciones,
-                        onValueChange = { observaciones = it },
-                        label = { Text("Observaciones adicionales") },
-                        placeholder = { Text("Recomendaciones especiales, progresiones, notas importantes...") },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 4
-                    )
-                }
-            }
-
-            // Botón de crear plan
-            Button(
-                onClick = {
-                    val duracionMinutos = duracionEstimada.toIntOrNull() ?: 0
-                    val duracionSegundos = duracionMinutos * 60
-
-                    // ✅ DEBUG: Verificar datos del profesional
-                    Log.d("CrearPlan", "=== DEBUG DATOS PROFESIONAL ===")
-                    Log.d("CrearPlan", "currentUser: $currentUser")
-                    Log.d("CrearPlan", "currentUser?.uid: ${currentUser?.uid}")
-                    Log.d("CrearPlan", "currentUser?.name: ${currentUser?.name}")
-                    Log.d("CrearPlan", "currentUser?.email: ${currentUser?.email}")
-                    Log.d("CrearPlan", "currentUser?.role: ${currentUser?.role}")
-
-                    val profesionalId = currentUser?.uid ?: ""
-                    val nombreProfesional = currentUser?.name ?: ""
-
-                    Log.d("CrearPlan", "profesionalId final: '$profesionalId'")
-                    Log.d("CrearPlan", "nombreProfesional final: '$nombreProfesional'")
-
-                    if (profesionalId.isEmpty()) {
-                        Log.e("CrearPlan", "❌ PROBLEMA: profesionalId está vacío!")
-                        Toast.makeText(context, "Error: No se pudo identificar al profesional", Toast.LENGTH_LONG).show()
-                        return@Button
-                    }
-
-                    if (nombreProfesional.isEmpty()) {
-                        Log.w("CrearPlan", "⚠️ ADVERTENCIA: nombreProfesional está vacío!")
-                    }
-
-                    val plan = PlanEntrenamiento(
-                        usuarioId = solicitud.usuarioId,
-                        profesionalId = profesionalId,
-                        nombreProfesional = nombreProfesional,
-                        tipoEjercicio = tipoEjercicio,
-                        lugarRealizacion = lugarRealizacion,
-                        materialesSugeridos = materialesSugeridos,
-                        frecuencia = frecuencia,
-                        dificultad = dificultad,
-                        duracionEstimada = duracionSegundos,
-                        ejercicios = ejercicios,
-                        observaciones = observaciones
-                    )
-
-                    Log.d("CrearPlan", "Plan creado con profesionalId: '${plan.profesionalId}' y nombre: '${plan.nombreProfesional}'")
-
-                    planesViewModel.crearPlanEntrenamiento(solicitud.id, plan)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading && ejercicios.isNotEmpty()
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Icon(Icons.Default.Save, contentDescription = null)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Crear Plan de Entrenamiento")
             }
         }
     }
 }
 
 @Composable
-private fun EjercicioCard(
-    ejercicio: Ejercicio,
-    onEjercicioChanged: (Ejercicio) -> Unit,
-    onEliminar: () -> Unit
+private fun SesionesEntrenamientoSection(
+    sesiones: List<SesionEntrenamiento>,
+    onSesionesChange: (List<SesionEntrenamiento>) -> Unit
 ) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+    Card {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    "Ejercicio",
-                    style = MaterialTheme.typography.titleSmall,
+                    "🏋️ Sesiones de Entrenamiento",
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
 
-                IconButton(onClick = onEliminar) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "Eliminar ejercicio",
-                        tint = MaterialTheme.colorScheme.error
-                    )
+                IconButton(
+                    onClick = {
+                        val nuevaSesion = SesionEntrenamiento(
+                            dia = "Día ${sesiones.size + 1}",
+                            nombre = "Sesión ${sesiones.size + 1}"
+                        )
+                        onSesionesChange(sesiones + nuevaSesion)
+                    }
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = "Agregar sesión")
                 }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = ejercicio.nombreEjercicio,
-                onValueChange = { onEjercicioChanged(ejercicio.copy(nombreEjercicio = it)) },
-                label = { Text("Nombre del ejercicio") },
-                placeholder = { Text("Ej: Press de banca, Sentadillas, Flexiones") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                // Músculo trabajado
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "Músculo:",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Medium
-                    )
-                    listOf("Superior", "Intermedio", "Inferior").forEach { musculo ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = ejercicio.musculoTrabajado == musculo,
-                                onClick = { onEjercicioChanged(ejercicio.copy(musculoTrabajado = musculo)) }
-                            )
-                            Text(musculo, style = MaterialTheme.typography.bodySmall)
+            if (sesiones.isEmpty()) {
+                Text(
+                    "No hay sesiones creadas. Toca + para agregar.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                sesiones.forEachIndexed { index, sesion ->
+                    SesionCard(
+                        sesion = sesion,
+                        onSesionChange = { sesionActualizada ->
+                            val nuevasSesiones = sesiones.toMutableList()
+                            nuevasSesiones[index] = sesionActualizada
+                            onSesionesChange(nuevasSesiones)
+                        },
+                        onEliminar = {
+                            onSesionesChange(sesiones.toMutableList().apply { removeAt(index) })
                         }
+                    )
+                    if (index < sesiones.size - 1) {
+                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
+            }
+        }
+    }
+}
 
-                // Repeticiones
+@Composable
+private fun SesionCard(
+    sesion: SesionEntrenamiento,
+    onSesionChange: (SesionEntrenamiento) -> Unit,
+    onEliminar: () -> Unit
+) {
+    var expandida by remember { mutableStateOf(false) }
+
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            // Header de la sesión
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "Repeticiones:",
-                        style = MaterialTheme.typography.bodySmall,
+                        sesion.nombre.ifEmpty { "Sesión sin nombre" },
                         fontWeight = FontWeight.Medium
                     )
-                    listOf("2x10", "3x12", "4x15", "1x20").forEach { rep ->
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = ejercicio.repeticiones == rep,
-                                onClick = { onEjercicioChanged(ejercicio.copy(repeticiones = rep)) }
-                            )
-                            Text(rep, style = MaterialTheme.typography.bodySmall)
-                        }
+                    Text(
+                        "${sesion.dia} • ${sesion.tipoSesion} • ${sesion.ejercicios.size} ejercicios",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                Row {
+                    IconButton(onClick = { expandida = !expandida }) {
+                        Icon(
+                            if (expandida) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                            contentDescription = if (expandida) "Contraer" else "Expandir"
+                        )
+                    }
+                    IconButton(onClick = onEliminar) {
+                        Icon(Icons.Default.Delete, contentDescription = "Eliminar")
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            if (expandida) {
+                Spacer(modifier = Modifier.height(12.dp))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedTextField(
-                    value = ejercicio.pesoRecomendado.toString().takeIf { it != "0.0" } ?: "",
-                    onValueChange = {
-                        val peso = it.toFloatOrNull() ?: 0f
-                        onEjercicioChanged(ejercicio.copy(pesoRecomendado = peso))
-                    },
-                    label = { Text("Peso (kg)") },
-                    placeholder = { Text("15.5") },
-                    modifier = Modifier.weight(1f),
-                    singleLine = true
-                )
-
-                OutlinedTextField(
-                    value = ejercicio.observaciones,
-                    onValueChange = { onEjercicioChanged(ejercicio.copy(observaciones = it)) },
-                    label = { Text("Observaciones") },
-                    placeholder = { Text("Técnica, descanso...") },
-                    modifier = Modifier.weight(2f),
-                    maxLines = 2
+                // Formulario de la sesión
+                SesionForm(
+                    sesion = sesion,
+                    onSesionChange = onSesionChange
                 )
             }
         }
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SesionForm(
+    sesion: SesionEntrenamiento,
+    onSesionChange: (SesionEntrenamiento) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Nombre y día
+        Row(modifier = Modifier.fillMaxWidth()) {
+            OutlinedTextField(
+                value = sesion.nombre,
+                onValueChange = { onSesionChange(sesion.copy(nombre = it)) },
+                label = { Text("Nombre sesión") },
+                modifier = Modifier.weight(1f)
+            )
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            OutlinedTextField(
+                value = sesion.dia,
+                onValueChange = { onSesionChange(sesion.copy(dia = it)) },
+                label = { Text("Día") },
+                modifier = Modifier.weight(1f)
+            )
+        }
+
+        // Tipo de sesión
+        val tiposSesion = listOf("FUERZA", "CARDIO", "MIXTO")
+        var expandedTipo by remember { mutableStateOf(false) }
+
+        ExposedDropdownMenuBox(
+            expanded = expandedTipo,
+            onExpandedChange = { expandedTipo = !expandedTipo }
+        ) {
+            OutlinedTextField(
+                value = sesion.tipoSesion,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Tipo de sesión") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedTipo) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expandedTipo,
+                onDismissRequest = { expandedTipo = false }
+            ) {
+                tiposSesion.forEach { tipo ->
+                    DropdownMenuItem(
+                        text = { Text(tipo) },
+                        onClick = {
+                            onSesionChange(sesion.copy(tipoSesion = tipo))
+                            expandedTipo = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Lista de ejercicios
+        Text(
+            "Ejercicios:",
+            fontWeight = FontWeight.Medium
+        )
+
+        sesion.ejercicios.forEachIndexed { index, ejercicio ->
+            EjercicioSimpleCard(
+                ejercicio = ejercicio,
+                onEjercicioChange = { ejercicioActualizado ->
+                    val nuevosEjercicios = sesion.ejercicios.toMutableList()
+                    nuevosEjercicios[index] = ejercicioActualizado
+                    onSesionChange(sesion.copy(ejercicios = nuevosEjercicios))
+                },
+                onEliminar = {
+                    val nuevosEjercicios = sesion.ejercicios.toMutableList()
+                    nuevosEjercicios.removeAt(index)
+                    onSesionChange(sesion.copy(ejercicios = nuevosEjercicios))
+                }
+            )
+        }
+
+        // Botón agregar ejercicio
+        TextButton(
+            onClick = {
+                val nuevoEjercicio = EjercicioSimple()
+                onSesionChange(sesion.copy(ejercicios = sesion.ejercicios + nuevoEjercicio))
+            }
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null)
+            Spacer(modifier = Modifier.width(4.dp))
+            Text("Agregar ejercicio")
+        }
+
+        // Notas de la sesión
+        OutlinedTextField(
+            value = sesion.notas,
+            onValueChange = { onSesionChange(sesion.copy(notas = it)) },
+            label = { Text("Notas de la sesión") },
+            placeholder = { Text("Calentamiento, enfoque específico, progresión...") },
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = 2
+        )
+    }
+}
+
+@Composable
+private fun EjercicioSimpleCard(
+    ejercicio: EjercicioSimple,
+    onEjercicioChange: (EjercicioSimple) -> Unit,
+    onEliminar: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    ) {
+        Column(modifier = Modifier.padding(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                OutlinedTextField(
+                    value = ejercicio.nombre,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(nombre = it)) },
+                    label = { Text("Ejercicio") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                IconButton(onClick = onEliminar) {
+                    Icon(Icons.Default.Delete, contentDescription = "Eliminar")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = ejercicio.series,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(series = it)) },
+                    label = { Text("Series") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                OutlinedTextField(
+                    value = ejercicio.repeticiones,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(repeticiones = it)) },
+                    label = { Text("Reps") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                OutlinedTextField(
+                    value = ejercicio.peso,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(peso = it)) },
+                    label = { Text("Peso") },
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(modifier = Modifier.fillMaxWidth()) {
+                OutlinedTextField(
+                    value = ejercicio.descanso,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(descanso = it)) },
+                    label = { Text("Descanso") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                OutlinedTextField(
+                    value = ejercicio.notas,
+                    onValueChange = { onEjercicioChange(ejercicio.copy(notas = it)) },
+                    label = { Text("Notas") },
+                    modifier = Modifier.weight(2f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ObservacionesGeneralesCard(
+    observaciones: String,
+    onObservacionesChange: (String) -> Unit
+) {
+    Card {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "📝 Observaciones Generales",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = observaciones,
+                onValueChange = onObservacionesChange,
+                label = { Text("Observaciones del plan") },
+                placeholder = { Text("Progresión, recomendaciones especiales, adaptaciones...") },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 4
+            )
+        }
+    }
+}
+
+// ===== FIN DEL ARCHIVO =====
+// Todas las funciones helper se han movido a:
+// - PlanEntrenamientoUtils.kt
+// - EjercicioMapper.kt
+// - AntropometriaUtils.kt
