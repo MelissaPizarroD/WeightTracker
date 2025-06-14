@@ -29,6 +29,7 @@ import java.util.*
 @Composable
 fun SolicitudesProfesionalScreen(
     navController: NavController,
+    role: String,
     planesViewModel: PlanesViewModel = viewModel()
 ) {
     val solicitudes by planesViewModel.solicitudesProfesional.collectAsState()
@@ -40,14 +41,8 @@ fun SolicitudesProfesionalScreen(
 
     // Cargar solicitudes al iniciar
     LaunchedEffect(Unit) {
-        planesViewModel.cargarSolicitudesProfesional()
-    }
-
-    // Mostrar mensaje si existe
-    mensaje?.let { msg ->
-        LaunchedEffect(msg) {
-            // Aquí podrías mostrar un Snackbar si quieres
-            planesViewModel.limpiarMensaje()
+        if (role != "nutricionista") {
+            planesViewModel.cargarSolicitudesProfesional()
         }
     }
 
@@ -55,10 +50,7 @@ fun SolicitudesProfesionalScreen(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        "📋 Solicitudes de Planes",
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("📋 Solicitudes de Planes", fontWeight = FontWeight.Bold)
                 },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
@@ -66,11 +58,13 @@ fun SolicitudesProfesionalScreen(
                     }
                 },
                 actions = {
-                    IconButton(
-                        onClick = { planesViewModel.cargarSolicitudesProfesional() },
-                        enabled = !isLoading
-                    ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                    if (role != "nutricionista") {
+                        IconButton(
+                            onClick = { planesViewModel.cargarSolicitudesProfesional() },
+                            enabled = !isLoading
+                        ) {
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
+                        }
                     }
                 }
             )
@@ -81,10 +75,37 @@ fun SolicitudesProfesionalScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center)
-                )
+            if (role == "nutricionista") {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(24.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            "⚠️ Función no disponible",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            "Las solicitudes de planes no están habilitadas para nutricionistas en este momento.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    }
+                }
+            } else if (isLoading) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
@@ -92,11 +113,8 @@ fun SolicitudesProfesionalScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     if (solicitudes.isEmpty()) {
-                        item {
-                            EmptyStateCard()
-                        }
+                        item { EmptyStateCard() }
                     } else {
-                        // Agrupar por estado
                         val pendientes = solicitudes.filter { it.estado == EstadoSolicitud.PENDIENTE }
                         val otras = solicitudes.filter { it.estado != EstadoSolicitud.PENDIENTE }
 
@@ -167,7 +185,6 @@ fun SolicitudesProfesionalScreen(
         )
     }
 }
-
 @Composable
 private fun SolicitudProfesionalCard(
     solicitud: SolicitudPlan,

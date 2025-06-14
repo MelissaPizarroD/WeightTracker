@@ -345,6 +345,15 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
+    fun cargarPlanesEntrenamientoDeUsuario(userId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val planes = repository.obtenerPlanesEntrenamientoPorUsuario(userId)
+            _planesEntrenamiento.value = planes
+            _isLoading.value = false
+        }
+    }
+
     /**
      * Limpia el mensaje actual
      */

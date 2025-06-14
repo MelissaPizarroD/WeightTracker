@@ -42,7 +42,8 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
     // ✅ ACTUALIZADA: Lista de menús con solicitudes de planes
     val menuItems = listOf(
         "Perfil Profesional" to "datosProfesional",
-        "Solicitudes de Planes" to "solicitudesPlanes",
+        "Solicitudes de Planes" to "solicitudesPlanes/$role",
+        "Planes Creados" to "planesCreados/$role",
         "Reportes de Avance" to "reporteAvance/$role"
     )
 
@@ -129,41 +130,105 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // ✅ CARD DE ACCESO RÁPIDO PARA SOLICITUDES
-                Card(
-                    onClick = { navController.navigate("solicitudesPlanes") },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Text(
-                            "📝",
-                            style = MaterialTheme.typography.headlineLarge
+                if (role != "nutricionista") {
+                    // ✅ CARD DE ACCESO RÁPIDO PARA SOLICITUDES
+                    Card(
+                        onClick = { navController.navigate("solicitudesPlanes/$role") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
                         )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                "Solicitudes de Planes",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                            Text(
-                                "Revisa y crea planes para tus usuarios",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onTertiaryContainer
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text("📝", style = MaterialTheme.typography.headlineLarge)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Solicitudes de Planes",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    "Revisa y crea planes para tus usuarios",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                            Icon(
+                                Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onTertiaryContainer
                             )
                         }
-                        Icon(
-                            Icons.Default.ArrowForward,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onTertiaryContainer
+                    }
+
+                    // ✅ ACCESO RÁPIDO DE PLANES CREADOS
+                    Card(
+                        onClick = { navController.navigate("planesCreados/$role") },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
                         )
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            Text("📋", style = MaterialTheme.typography.headlineLarge)
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    "Planes Creados",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                Text(
+                                    "Ver todos los planes realizados",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            }
+                            Icon(
+                                Icons.Default.ArrowForward,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
+                } else {
+                    // 🛑 MENSAJE PARA NUTRICIONISTAS
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("⚠️", style = MaterialTheme.typography.headlineLarge)
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Text(
+                                "Funciones no disponibles",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Las solicitudes y creación de planes aún no están habilitadas para nutricionistas.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                            )
+                        }
                     }
                 }
 
@@ -278,10 +343,11 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                     ) {
                         items(usuarios) { usuario ->
                             UsuarioCard(
-                                usuario = usuario,
-                                onVerReportes = {
-                                    navController.navigate("reporteAvance/$role")
-                                }
+                                usuario = usuario
+                                //EN VEREMOS
+//                                onVerReportes = {
+//                                    navController.navigate("reporteAvance/$role")
+//                                }
                             )
                         }
                     }
@@ -320,7 +386,7 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
 @Composable
 private fun UsuarioCard(
     usuario: User,
-    onVerReportes: () -> Unit
+//    onVerReportes: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -383,11 +449,11 @@ private fun UsuarioCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-
-            // Botón para ver reportes
-            TextButton(onClick = onVerReportes) {
-                Text("Ver reportes")
-            }
+//             EN VEREMOS
+//            // Botón para ver reportes
+//            TextButton(onClick = onVerReportes) {
+//                Text("Ver reportes")
+//            }
         }
     }
 }

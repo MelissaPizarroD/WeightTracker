@@ -36,6 +36,8 @@ import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
 import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
 import com.isoft.weighttracker.feature.planes.ui.MisPlanesScreen
+import com.isoft.weighttracker.feature.planes.ui.PlanesCreadosUsuariosScreen
+import com.isoft.weighttracker.feature.planes.ui.PlanesUsuarioScreen
 import com.isoft.weighttracker.feature.planes.ui.SolicitarPlanScreen
 import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
 import com.isoft.weighttracker.feature.planes.ui.VerPlanEntrenamientoScreen
@@ -239,8 +241,9 @@ fun AppNavigation(
         }
 
         // === ✅ RUTAS DE PLANES (PROFESIONALES) ===
-        composable("solicitudesPlanes") {
-            SolicitudesProfesionalScreen(navController = navController)
+        composable("solicitudesPlanes/{role}") { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: ""
+            SolicitudesProfesionalScreen(navController, role)
         }
 
         composable(
@@ -280,6 +283,38 @@ fun AppNavigation(
         ) { backStackEntry ->
             val planId = backStackEntry.arguments?.getString("planId") ?: ""
             VerPlanEntrenamientoScreen(navController, planId)
+        }
+
+        composable(
+            "planesCreados/{role}",
+            arguments = listOf(
+                navArgument("role") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: ""
+            PlanesCreadosUsuariosScreen(navController = navController, role = role)
+        }
+
+        composable(
+            route = "planesUsuario/{userId}/{userName}",
+            arguments = listOf(
+                navArgument("userId") { type = NavType.StringType },
+                navArgument("userName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+            val userName = URLDecoder.decode(
+                backStackEntry.arguments?.getString("userName") ?: "",
+                StandardCharsets.UTF_8.toString()
+            )
+
+            PlanesUsuarioScreen(
+                navController = navController,
+                userId = userId,
+                userName = userName,
+                //Implementado para Entrenador por ahora.
+                rol = "entrenador" // puede pasarse a dinámico
+            )
         }
     }
 }

@@ -497,4 +497,20 @@ class PlanesRepository {
             null
         }
     }
+
+    suspend fun obtenerPlanesEntrenamientoPorUsuario(userId: String): List<PlanEntrenamiento> {
+        return try {
+            val snapshot = db.collection("users")
+                .document(userId)
+                .collection("planesEntrenamiento")
+                .orderBy("fechaCreacion", Query.Direction.DESCENDING)
+                .get()
+                .await()
+
+            snapshot.documents.mapNotNull { it.toObject(PlanEntrenamiento::class.java) }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Error obteniendo planes de entrenamiento del usuario $userId", e)
+            emptyList()
+        }
+    }
 }

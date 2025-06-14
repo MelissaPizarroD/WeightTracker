@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -69,6 +70,9 @@ fun SolicitarPlanScreen(
 
     // Estado para diálogo de confirmación
     var mostrarDialogoConfirmacion by remember { mutableStateOf(false) }
+
+    //Para deshabilitar solicitud de planes nutricionales
+    var mostrarDialogoNutricionNoDisponible by remember { mutableStateOf(false) }
 
     // Obtener profesionales asociados usando el ViewModel correcto
     val tieneEntrenador = profesionalesAsociados.containsKey("entrenador")
@@ -238,11 +242,21 @@ fun SolicitarPlanScreen(
                                     )
                                 }
 
+                                //Dentro del if (tieneNutricionista) en dado caso se implemente el form de planes
+
+//                                FilterChip(
+//                                    onClick = { tipoPlanSeleccionado = TipoPlan.NUTRICION },
+//                                    label = { Text("🥗 Nutrición") },
+//                                    selected = tipoPlanSeleccionado == TipoPlan.NUTRICION
+//                                )
+
                                 if (tieneNutricionista) {
                                     FilterChip(
-                                        onClick = { tipoPlanSeleccionado = TipoPlan.NUTRICION },
+                                        onClick = {
+                                            mostrarDialogoNutricionNoDisponible = true
+                                        },
                                         label = { Text("🥗 Nutrición") },
-                                        selected = tipoPlanSeleccionado == TipoPlan.NUTRICION
+                                        selected = false // Desactivado siempre
                                     )
                                 }
                             }
@@ -1039,6 +1053,45 @@ fun SolicitarPlanScreen(
         )
     }
 
+    if (mostrarDialogoNutricionNoDisponible) {
+        AlertDialog(
+            onDismissRequest = { mostrarDialogoNutricionNoDisponible = false },
+            title = {
+                Text(
+                    "🚫 ¡Lo sentimos!",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Las solicitudes de planes nutricionales aún no están disponibles.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Estamos trabajando para habilitarlas próximamente.",
+                        style = MaterialTheme.typography.bodySmall,
+                        textAlign = TextAlign.Center
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { mostrarDialogoNutricionNoDisponible = false }
+                ) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
     // Mostrar mensajes
     LaunchedEffect(mensaje) {
         mensaje?.let {
