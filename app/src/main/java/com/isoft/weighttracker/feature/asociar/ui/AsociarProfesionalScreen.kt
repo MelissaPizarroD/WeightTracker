@@ -6,13 +6,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -26,9 +30,13 @@ fun AsociarProfesionalScreen(
     navController: NavController,
     viewModel: AsociarProfesionalViewModel = viewModel()
 ) {
-    val asociados by viewModel.asociados.collectAsState()
+    // ✅ USAR INFORMACIÓN COMPLETA
+    val asociadosCompletos by viewModel.asociadosCompletos.collectAsState()
+    val asociados = asociadosCompletos.mapValues { it.value.user } // Para compatibilidad
+
     val estado by viewModel.estado.collectAsState()
     val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
     val scope = rememberCoroutineScope()
 
     var tipoProfesional by remember { mutableStateOf("entrenador") }
@@ -84,19 +92,63 @@ fun AsociarProfesionalScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
-            if (asociados.isNotEmpty()) {
+            if (asociadosCompletos.isNotEmpty()) {
                 Text("Tus profesionales asociados:", style = MaterialTheme.typography.titleMedium)
 
-                asociados.forEach { (tipo, profe) ->
+                // ✅ MOSTRAR INFORMACIÓN COMPLETA
+                asociadosCompletos.forEach { (tipo, profesionalCompleto) ->
+                    val profe = profesionalCompleto.user
+                    val profile = profesionalCompleto.profesionalProfile
+
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Rol: ${tipo.replaceFirstChar { it.uppercase() }}", style = MaterialTheme.typography.titleSmall)
+                            // Header con tipo
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    "${tipo.replaceFirstChar { it.uppercase() }}",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
 
-                            Spacer(Modifier.height(8.dp))
+                                // ✅ CÓDIGO CON BOTÓN COPIAR
+                                profile?.idProfesional?.let { codigo ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                    ) {
+                                        Text(
+                                            codigo,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        IconButton(
+                                            onClick = {
+                                                clipboardManager.setText(AnnotatedString(codigo))
+                                                Toast.makeText(context, "Código copiado", Toast.LENGTH_SHORT).show()
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.ContentCopy,
+                                                contentDescription = "Copiar código",
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
 
+                            Spacer(Modifier.height(12.dp))
+
+                            // Foto de perfil
                             if (!profe.photoUrl.isNullOrEmpty()) {
                                 AsyncImage(
                                     model = profe.photoUrl,
@@ -108,10 +160,34 @@ fun AsociarProfesionalScreen(
                                 Spacer(Modifier.height(8.dp))
                             }
 
-                            Text("👤 ${profe.name}", style = MaterialTheme.typography.bodyLarge)
+                            // Información básica
+                            Text("👤 ${profe.name}", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
                             Text("📧 ${profe.email}", style = MaterialTheme.typography.bodyMedium)
 
-                            Spacer(Modifier.height(8.dp))
+                            // ✅ INFORMACIÓN PROFESIONAL
+                            profile?.let { prof ->
+                                Spacer(Modifier.height(8.dp))
+                                Divider()
+                                Spacer(Modifier.height(8.dp))
+
+                                Text("Información Profesional", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+                                Spacer(Modifier.height(4.dp))
+
+                                if (prof.especialidad.isNotBlank()) {
+                                    Text("🎯 Especialidad: ${prof.especialidad}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                if (prof.estudios.isNotBlank()) {
+                                    Text("🎓 Estudios: ${prof.estudios}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                if (prof.cedula.isNotBlank()) {
+                                    Text("📋 Cédula: ${prof.cedula}", style = MaterialTheme.typography.bodySmall)
+                                }
+                                if (prof.experiencia.isNotBlank()) {
+                                    Text("⭐ Experiencia: ${prof.experiencia}", style = MaterialTheme.typography.bodySmall)
+                                }
+                            }
+
+                            Spacer(Modifier.height(12.dp))
 
                             OutlinedButton(
                                 onClick = { tipoAEliminar = tipo },

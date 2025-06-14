@@ -178,6 +178,18 @@ class UserRepository {
         }
     }
 
+    suspend fun getProfesionalProfileByUserId(userId: String): ProfesionalProfile? {
+        return try {
+            val doc = db.collection("users").document(userId)
+                .collection("profesionalProfile").document("info").get().await()
+
+            doc.toObject(ProfesionalProfile::class.java)
+        } catch (e: Exception) {
+            Log.e("UserRepository", "❌ Error obteniendo ProfesionalProfile del usuario $userId", e)
+            null
+        }
+    }
+
     // ✅ ACTUALIZADO - Busca en PersonaProfile en vez de User
     suspend fun getUsuariosAsociados(tipo: String, uidProfesional: String): List<User> {
         return try {

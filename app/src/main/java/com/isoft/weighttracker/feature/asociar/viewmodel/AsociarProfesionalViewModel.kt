@@ -7,6 +7,7 @@ import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.model.User
 import com.isoft.weighttracker.feature.asociar.data.AsociarProfesionalRepository
 import com.isoft.weighttracker.feature.asociar.data.ProfesionalAsociadoRepository
+import com.isoft.weighttracker.feature.asociar.data.ProfesionalCompleto
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -19,8 +20,13 @@ class AsociarProfesionalViewModel(
     private val _estado = MutableStateFlow<String?>(null)
     val estado: StateFlow<String?> = _estado
 
+    // ✅ MANTENER para compatibilidad
     private val _asociados = MutableStateFlow<Map<String, User>>(emptyMap())
     val asociados: StateFlow<Map<String, User>> = _asociados
+
+    // ✅ NUEVO - StateFlow para información completa
+    private val _asociadosCompletos = MutableStateFlow<Map<String, ProfesionalCompleto>>(emptyMap())
+    val asociadosCompletos: StateFlow<Map<String, ProfesionalCompleto>> = _asociadosCompletos
 
     fun clearEstado() {
         _estado.value = null
@@ -31,15 +37,24 @@ class AsociarProfesionalViewModel(
             Log.d("AsociarProfesional", "🔍 Iniciando carga de profesionales asociados...")
 
             try {
-                val resultado = asociadoRepo.obtenerAsociados()
-                Log.d("AsociarProfesional", "📋 Resultado obtenido: $resultado")
-                Log.d("AsociarProfesional", "📊 Cantidad de asociados: ${resultado.size}")
+                // ✅ NUEVO - Cargar información completa
+                val resultadoCompleto = asociadoRepo.obtenerAsociadosCompletos()
+                Log.d("AsociarProfesional", "📋 Resultado completo obtenido: $resultadoCompleto")
+                Log.d("AsociarProfesional", "📊 Cantidad de asociados: ${resultadoCompleto.size}")
 
-                resultado.forEach { (tipo, user) ->
+                resultadoCompleto.forEach { (tipo, profesionalCompleto) ->
+                    val user = profesionalCompleto.user
+                    val profile = profesionalCompleto.profesionalProfile
                     Log.d("AsociarProfesional", "👤 $tipo: ${user.name} (${user.email}) - UID: ${user.uid}")
+                    Log.d("AsociarProfesional", "📋 Especialidad: ${profile?.especialidad ?: "Sin especialidad"}")
+                    Log.d("AsociarProfesional", "🆔 Código: ${profile?.idProfesional ?: "Sin código"}")
                 }
 
-                _asociados.value = resultado
+                _asociadosCompletos.value = resultadoCompleto
+
+                // ✅ MANTENER compatibilidad
+                _asociados.value = resultadoCompleto.mapValues { it.value.user }
+
                 Log.d("AsociarProfesional", "✅ Estado actualizado correctamente")
 
             } catch (e: Exception) {
@@ -52,7 +67,13 @@ class AsociarProfesionalViewModel(
         viewModelScope.launch {
             Log.d("AsociarProfesional", "🔗 Intentando asociar: $codigo como $tipo")
 
-            val currentUser = FirebaseAuth.getInstance().currentUser ?: return@launch
+            val currentUser = FirebaseAuth.getInstance().currentUser ?: run {
+                _estado.value = "❌ Usuario no autenticado"
+                return@launch
+            }
+
+            _estado.value = "🔍 Buscando profesional..."
+
             val profe = asociarRepo.buscarProfesionalPorCodigo(codigo.trim(), tipo)
 
             if (profe == null) {
