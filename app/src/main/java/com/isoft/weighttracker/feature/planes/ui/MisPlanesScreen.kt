@@ -20,7 +20,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.isoft.weighttracker.feature.planes.model.EstadoPlan
 import com.isoft.weighttracker.feature.planes.model.PlanEntrenamiento
-import com.isoft.weighttracker.feature.planes.model.PlanNutricional
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,7 +31,6 @@ fun MisPlanesScreen(
     planesViewModel: PlanesViewModel = viewModel()
 ) {
     val context = LocalContext.current
-    val planesNutricion by planesViewModel.planesNutricion.collectAsState()
     val planesEntrenamiento by planesViewModel.planesEntrenamiento.collectAsState()
     val isLoading by planesViewModel.isLoading.collectAsState()
     val mensaje by planesViewModel.mensaje.collectAsState()
@@ -74,7 +72,7 @@ fun MisPlanesScreen(
             )
         }
     ) { padding ->
-        if (isLoading && planesNutricion.isEmpty() && planesEntrenamiento.isEmpty()) {
+        if (isLoading && planesEntrenamiento.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -91,35 +89,13 @@ fun MisPlanesScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Resumen de planes activos
+
                 item {
                     ResumenPlanesActivos(
-                        planesNutricion = planesNutricion,
                         planesEntrenamiento = planesEntrenamiento
                     )
                 }
 
-                // Planes de Nutrición
-                if (planesNutricion.isNotEmpty()) {
-                    item {
-                        Text(
-                            "🥗 Planes de Nutrición",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    items(planesNutricion) { plan ->
-                        PlanNutricionalCard(
-                            plan = plan,
-                            navController = navController, // ✅ AGREGADO: navController
-                            onActivar = { planesViewModel.activarPlanNutricional(plan.id) },
-                            onDesactivar = { planesViewModel.desactivarPlanNutricional(plan.id) }
-                        )
-                    }
-                }
-
-                // Planes de Entrenamiento
                 if (planesEntrenamiento.isNotEmpty()) {
                     item {
                         Text(
@@ -132,15 +108,12 @@ fun MisPlanesScreen(
                     items(planesEntrenamiento) { plan ->
                         PlanEntrenamientoCard(
                             plan = plan,
-                            navController = navController, // ✅ Agrega esta línea
+                            navController = navController,
                             onActivar = { planesViewModel.activarPlanEntrenamiento(plan.id) },
                             onDesactivar = { planesViewModel.desactivarPlanEntrenamiento(plan.id) }
                         )
                     }
-                }
-
-                // Mensaje cuando no hay planes
-                if (planesNutricion.isEmpty() && planesEntrenamiento.isEmpty()) {
+                } else {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
@@ -152,10 +125,7 @@ fun MisPlanesScreen(
                                     .padding(32.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
-                                Text(
-                                    "📋",
-                                    style = MaterialTheme.typography.headlineLarge
-                                )
+                                Text("📋", style = MaterialTheme.typography.headlineLarge)
                                 Spacer(modifier = Modifier.height(16.dp))
                                 Text(
                                     "No tienes planes disponibles",
@@ -164,7 +134,7 @@ fun MisPlanesScreen(
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Solicita planes a tus profesionales asociados",
+                                    "Solicita un plan a tu entrenador",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -179,10 +149,8 @@ fun MisPlanesScreen(
 
 @Composable
 private fun ResumenPlanesActivos(
-    planesNutricion: List<PlanNutricional>,
     planesEntrenamiento: List<PlanEntrenamiento>
 ) {
-    val planNutricionActivo = planesNutricion.find { it.estado == EstadoPlan.ACTIVO }
     val planEntrenamientoActivo = planesEntrenamiento.find { it.estado == EstadoPlan.ACTIVO }
 
     Card(
@@ -205,9 +173,10 @@ private fun ResumenPlanesActivos(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
             ) {
+                // Nutrición: mensaje de no disponible
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
-                        if (planNutricionActivo != null) "✅" else "⭕",
+                        "❌",
                         style = MaterialTheme.typography.headlineMedium
                     )
                     Text(
@@ -215,15 +184,14 @@ private fun ResumenPlanesActivos(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
-                    if (planNutricionActivo != null) {
-                        Text(
-                            "por ${planNutricionActivo.nombreProfesional}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        )
-                    }
+                    Text(
+                        "No disponible",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                    )
                 }
 
+                // Entrenamiento
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         if (planEntrenamientoActivo != null) "✅" else "⭕",
@@ -241,193 +209,6 @@ private fun ResumenPlanesActivos(
                             color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
                         )
                     }
-                }
-            }
-        }
-    }
-}
-
-// ✅ ACTUALIZADA: PlanNutricionalCard con navegación y nuevo modelo
-@Composable
-private fun PlanNutricionalCard(
-    plan: PlanNutricional,
-    navController: NavController,
-    onActivar: () -> Unit,
-    onDesactivar: () -> Unit
-) {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-    val esActivo = plan.estado == EstadoPlan.ACTIVO
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = if (esActivo) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        "🥗 Plan Nutricional",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold,
-                        color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "por ${plan.nombreProfesional}",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                // Estado del plan
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = when (plan.estado) {
-                        EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.primary
-                        EstadoPlan.INACTIVO -> MaterialTheme.colorScheme.outline
-                        EstadoPlan.FINALIZADO -> MaterialTheme.colorScheme.tertiary
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    }
-                ) {
-                    Text(
-                        text = when (plan.estado) {
-                            EstadoPlan.ACTIVO -> "ACTIVO"
-                            EstadoPlan.INACTIVO -> "INACTIVO"
-                            EstadoPlan.FINALIZADO -> "FINALIZADO"
-                            else -> plan.estado.name
-                        },
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = when (plan.estado) {
-                            EstadoPlan.ACTIVO -> MaterialTheme.colorScheme.onPrimary
-                            else -> MaterialTheme.colorScheme.onSurfaceVariant
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Información del plan
-            Text(
-                "📅 Frecuencia: ${plan.frecuencia}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "🔄 Repetición: ${plan.repeticion}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            // ✅ NUEVO: Mostrar categorías activas en lugar de comidas (SIN ACEITE)
-            val categoriasActivas = mutableListOf<String>()
-            if (plan.patatasArrozPanPasta.activo) categoriasActivas.add("Cereales")
-            if (plan.verdurasHortalizas.activo) categoriasActivas.add("Verduras")
-            if (plan.frutas.activo) categoriasActivas.add("Frutas")
-            if (plan.lecheDerivados.activo) categoriasActivas.add("Lácteos")
-            if (plan.pescados.activo) categoriasActivas.add("Pescados")
-            if (plan.carnesMagrasAvesHuevos.activo) categoriasActivas.add("Carnes/Huevos")
-            if (plan.legumbres.activo) categoriasActivas.add("Legumbres")
-            if (plan.frutoSecos.activo) categoriasActivas.add("Frutos secos")
-
-            if (categoriasActivas.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "🍽️ Incluye: ${categoriasActivas.joinToString(", ")}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-            }
-
-            // ✅ ACTUALIZADO: Mostrar observaciones generales
-            if (plan.observacionesGenerales.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "📝 ${plan.observacionesGenerales}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
-                )
-            }
-
-            // Fechas
-            plan.fechaActivacion?.let { fecha ->
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "✅ Activo desde: ${dateFormat.format(Date(fecha))}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Botones de acción
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                if (plan.estado == EstadoPlan.ACTIVO) {
-                    OutlinedButton(
-                        onClick = onDesactivar,
-                        modifier = Modifier.weight(1f),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                        )
-                    ) {
-                        Icon(Icons.Default.Stop, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Desactivar")
-                    }
-                } else {
-                    Button(
-                        onClick = onActivar,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text("Activar")
-                    }
-                }
-
-                // ✅ NUEVO: Botón para ver detalles funcional
-                OutlinedButton(
-                    onClick = {
-                        navController.navigate("verPlanNutricional/${plan.id}")
-                    },
-                    modifier = Modifier.weight(1f),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = if (esActivo) MaterialTheme.colorScheme.onPrimaryContainer
-                        else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                ) {
-                    Text("Ver Plan")
-                }
-
-                Button(onClick = {
-                    navController.navigate("verPlanEntrenamiento/${plan.id}")
-                }) {
-                    Text("Ver Plan")
                 }
             }
         }
