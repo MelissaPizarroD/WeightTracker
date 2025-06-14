@@ -1,6 +1,7 @@
 package com.isoft.weighttracker.shared
 
 import android.content.Context
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
@@ -12,13 +13,14 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+// ✅ ACTUALIZADO - Removido profesionales
 data class LoggedUser(
     val uid: String,
     val email: String,
     val role: String,
     val name: String,
-    val photoUrl: String? = null,
-    val profesionales: Map<String, String>? = null
+    val photoUrl: String? = null
+    // ❌ REMOVIDO: profesionales (ahora está en PersonaProfile)
 )
 
 class UserViewModel : ViewModel() {
@@ -34,6 +36,7 @@ class UserViewModel : ViewModel() {
     private val _profesionalProfile = MutableStateFlow<ProfesionalProfile?>(null)
     val profesionalProfile: StateFlow<ProfesionalProfile?> = _profesionalProfile
 
+    // ✅ ACTUALIZADO - Removida referencia a base.profesionales
     fun loadUser() {
         viewModelScope.launch {
             val user = FirebaseAuth.getInstance().currentUser
@@ -46,8 +49,8 @@ class UserViewModel : ViewModel() {
                         email = base.email,
                         role = base.role,
                         name = base.name,
-                        photoUrl = base.photoUrl,
-                        profesionales = base.profesionales
+                        photoUrl = base.photoUrl
+                        // ❌ REMOVIDO: profesionales = base.profesionales
                     )
                 }
             }
@@ -116,7 +119,7 @@ class UserViewModel : ViewModel() {
         }
     }
 
-    //Para profesionales
+    // Para profesionales
     fun loadProfesionalProfile() {
         viewModelScope.launch {
             val profile = userRepo.getProfesionalProfile()
@@ -126,10 +129,18 @@ class UserViewModel : ViewModel() {
 
     fun updateProfesionalProfile(profile: ProfesionalProfile, onSuccess: () -> Unit) {
         viewModelScope.launch {
-            val ok = userRepo.updateProfesionalProfile(profile)
-            if (ok) {
-                _profesionalProfile.value = profile
-                onSuccess()
+            try {
+                val ok = userRepo.updateProfesionalProfile(profile)
+                if (ok) {
+                    _profesionalProfile.value = profile
+                    onSuccess()
+                } else {
+                    // Manejar error si updateProfesionalProfile retorna false
+                    Log.e("UserViewModel", "❌ Error al actualizar perfil profesional")
+                }
+            } catch (e: Exception) {
+                Log.e("UserViewModel", "❌ Excepción al actualizar perfil profesional: ${e.message}", e)
+                // No llamar onSuccess si hay error
             }
         }
     }
@@ -138,6 +149,23 @@ class UserViewModel : ViewModel() {
     fun clearUser() {
         _currentUser.value = null
         _personaProfile.value = null
+        _profesionalProfile.value = null
         userRepo.signOut()
+    }
+
+    suspend fun generateProfessionalIdIfNeeded(): String? {
+        return try {
+            val currentUid = FirebaseAuth.getInstance().currentUser?.uid
+            if (currentUid != null) {
+                userRepo.generateAndSetProfessionalId(currentUid)
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    // ✅ NUEVA FUNCIÓN - Para obtener profesionales desde PersonaProfile
+    fun getProfesionalesAsociados(): Map<String, String>? {
+        return _personaProfile.value?.profesionales
     }
 }

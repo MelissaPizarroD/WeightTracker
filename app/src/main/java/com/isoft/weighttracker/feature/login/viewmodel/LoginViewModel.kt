@@ -46,6 +46,7 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             .launchIn(viewModelScope)
     }
 
+    // ✅ SIMPLIFICADO - Solo actualiza role, NO genera ID automáticamente
     fun updateUserRole(role: String) {
         viewModelScope.launch {
             val user = userRepo.getUser() ?: run {
@@ -53,22 +54,9 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                 return@launch
             }
 
-            // Actualizar role siempre
+            // Solo actualizar role, el ID se generará cuando complete el perfil profesional
             userRepo.updateRole(role)
             Log.d("LoginVM", "✅ Role actualizado a: $role")
-
-            // Generar ID profesional SOLO si no lo tiene
-            if (role in listOf("entrenador", "nutricionista") && user.idProfesional.isNullOrEmpty()) {
-                try {
-                    val nuevoId = generateUniqueCode()
-                    userRepo.setProfessionalId(user.uid, nuevoId)
-                    Log.d("LoginVM", "✅ ID profesional generado: $nuevoId para ${user.uid}")
-                } catch (e: Exception) {
-                    Log.e("LoginVM", "❌ Error generando ID profesional: ${e.message}")
-                }
-            } else if (role in listOf("entrenador", "nutricionista")) {
-                Log.d("LoginVM", "✅ Usuario ya tiene ID profesional: ${user.idProfesional}")
-            }
 
             _navigationEvent.value = NavigationEvent.GoToHome(role)
         }
@@ -84,23 +72,11 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    // ✅ SIMPLIFICADO - Solo navega según role, sin generar IDs
     private suspend fun handleUserNavigation() {
         val user = userRepo.getUser() ?: run {
             Log.e("LoginVM", "❌ Usuario no encontrado en handleUserNavigation")
             return
-        }
-
-        // Generar ID profesional si falta
-        if (user.role in listOf("entrenador", "nutricionista") &&
-            user.idProfesional.isNullOrEmpty()) {
-
-            try {
-                val nuevoId = generateUniqueCode()
-                userRepo.setProfessionalId(user.uid, nuevoId)
-                Log.d("LoginVM", "✅ ID profesional generado en navegación: $nuevoId para ${user.uid}")
-            } catch (e: Exception) {
-                Log.e("LoginVM", "❌ Error generando ID profesional en navegación: ${e.message}")
-            }
         }
 
         // Navegar según el estado del usuario
@@ -109,33 +85,6 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         } else {
             _navigationEvent.value = NavigationEvent.GoToHome(user.role)
         }
-    }
-
-    // ✅ FUNCIÓN PARA GENERAR CÓDIGOS ÚNICOS
-    private suspend fun generateUniqueCode(): String {
-        val chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-        var attempts = 0
-        val maxAttempts = 10
-
-        while (attempts < maxAttempts) {
-            val code = (1..6).map { chars.random() }.joinToString("")
-
-            // Verificar que el código no exista
-            val existing = db.collection("users")
-                .whereEqualTo("idProfesional", code)
-                .get()
-                .await()
-
-            if (existing.isEmpty) {
-                Log.d("LoginVM", "🆔 Código único generado: $code")
-                return code
-            }
-
-            attempts++
-            Log.w("LoginVM", "⚠️ Código $code ya existe, intento $attempts/$maxAttempts")
-        }
-
-        throw Exception("No se pudo generar código único después de $maxAttempts intentos")
     }
 }
 

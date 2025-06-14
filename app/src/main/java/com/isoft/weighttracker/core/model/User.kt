@@ -5,7 +5,5 @@ data class User(
     val name: String = "",
     val email: String = "",
     val role: String = "", // "persona", "entrenador", "nutricionista"
-    val photoUrl: String? = null,
-    val idProfesional: String? = null,
-    val profesionales: Map<String, String>? = null
+    val photoUrl: String? = null
 )

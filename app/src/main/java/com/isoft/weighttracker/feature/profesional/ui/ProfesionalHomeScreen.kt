@@ -1,6 +1,5 @@
 package com.isoft.weighttracker.feature.profesional.ui
 
-import android.graphics.Insets.add
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -19,6 +18,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
@@ -27,29 +27,68 @@ import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.model.User
 import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
+import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesionalHomeScreen(navController: NavController, role: String) {
     val viewModel: ProfesionalViewModel = viewModel()
+    val userViewModel: UserViewModel = viewModel()
     val usuarios by viewModel.usuariosAsociados.collectAsState()
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showLogoutDialog by remember { mutableStateOf(false) }
 
-    // ✅ ACTUALIZADA: Lista de menús con solicitudes de planes
+    // ✅ VALIDACIÓN DEL PERFIL PROFESIONAL
+    val profesionalProfile by userViewModel.profesionalProfile.collectAsState()
+    var cargandoDatos by remember { mutableStateOf(true) }
+    var mostrandoAviso by remember { mutableStateOf(false) }
+
+    // ✅ CORREGIDO - Extraer valores antes de usar
+    val profile = profesionalProfile
+    val perfilCompleto = profile != null &&
+            profile.especialidad.isNotBlank() &&
+            profile.estudios.isNotBlank() &&
+            profile.cedula.isNotBlank() &&
+            profile.experiencia.isNotBlank() &&
+            !profile.idProfesional.isNullOrBlank()
+
+    // Cargar perfil al inicio
+    LaunchedEffect(Unit) {
+        userViewModel.loadUser() // ✅ AGREGAR ESTA LÍNEA
+        userViewModel.loadProfesionalProfile()
+        viewModel.cargarUsuariosAsociados(role)
+    }
+
+    // Manejar estados después de cargar datos
+    LaunchedEffect(profesionalProfile) {
+        if (cargandoDatos) {
+            // Primera carga: esperar un momento para datos de Firebase
+            kotlinx.coroutines.delay(1500)
+            cargandoDatos = false
+
+            // Después de cargar, decidir qué mostrar
+            if (!perfilCompleto) {
+                mostrandoAviso = true
+            }
+        } else {
+            // Datos ya cargados, reaccionar a cambios
+            if (perfilCompleto && mostrandoAviso) {
+                // Si el perfil se completó mientras se mostraba el aviso
+                kotlinx.coroutines.delay(1000)
+                mostrandoAviso = false
+            }
+        }
+    }
+
     val menuItems = listOf(
         "Perfil Profesional" to "datosProfesional",
         "Solicitudes de Planes" to "solicitudesPlanes/$role",
         "Planes Creados" to "planesCreados/$role",
         "Reportes de Avance" to "reporteAvance/$role"
     )
-
-    LaunchedEffect(role) {
-        viewModel.cargarUsuariosAsociados(role)
-    }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -74,15 +113,12 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f)) // Empuja hacia abajo
+                Spacer(modifier = Modifier.weight(1f))
                 Divider()
                 NavigationDrawerItem(
                     label = { Text("Cerrar sesión") },
                     selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        showLogoutDialog = true
-                    },
+                    onClick = { showLogoutDialog = true },
                     modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
@@ -91,15 +127,15 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text("WeightTracker") },
+                    title = { Text("Panel Profesional") },
                     navigationIcon = {
                         IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                            Icon(Icons.Filled.Menu, contentDescription = "Menú")
+                            Icon(Icons.Default.Menu, contentDescription = "Menú")
                         }
                     },
                     actions = {
                         IconButton(onClick = { viewModel.cargarUsuariosAsociados(role) }) {
-                            Icon(Icons.Default.Refresh, contentDescription = "Recargar")
+                            Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -111,244 +147,199 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                 )
             }
         ) { innerPadding ->
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = "👋 ¡Hola de nuevo!",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-
-                Text(
-                    text = "Gestiona a tus usuarios asociados como ${role.replaceFirstChar { it.uppercase() }}",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                if (role != "nutricionista") {
-                    // ✅ CARD DE ACCESO RÁPIDO PARA SOLICITUDES
-                    Card(
-                        onClick = { navController.navigate("solicitudesPlanes/$role") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        )
+            if (cargandoDatos) {
+                // ✅ PANTALLA DE CARGA
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Text("📝", style = MaterialTheme.typography.headlineLarge)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Solicitudes de Planes",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                                Text(
-                                    "Revisa y crea planes para tus usuarios",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                            }
-                            Icon(
-                                Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onTertiaryContainer
-                            )
-                        }
+                        CircularProgressIndicator()
+                        Text(
+                            "Cargando perfil profesional...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
+                }
+            } else if (mostrandoAviso) {
+                // ✅ MOSTRAR AVISO PARA COMPLETAR PERFIL PROFESIONAL
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(3000) // Mostrar por 3 segundos
+                    navController.navigate("datosProfesional")
+                }
 
-                    // ✅ ACCESO RÁPIDO DE PLANES CREADOS
-                    Card(
-                        onClick = { navController.navigate("planesCreados/$role") },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Text("📋", style = MaterialTheme.typography.headlineLarge)
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    "Planes Creados",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Text(
-                                    "Ver todos los planes realizados",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                            Icon(
-                                Icons.Default.ArrowForward,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-                } else {
-                    // 🛑 MENSAJE PARA NUTRICIONISTAS
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text("⚠️", style = MaterialTheme.typography.headlineLarge)
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text(
-                                "Funciones no disponibles",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Las solicitudes y creación de planes aún no están habilitadas para nutricionistas.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                            )
-                        }
-                    }
-                }
-
-                // Cards de acceso rápido adicionales
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Card(
-                        onClick = { navController.navigate("reporteAvance/$role") },
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                "📊",
-                                style = MaterialTheme.typography.headlineMedium
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Reportes",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                "Ver avances de usuarios",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                        }
-                    }
-
-                    Card(
-                        onClick = { navController.navigate("datosProfesional") },
-                        modifier = Modifier.weight(1f),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
+                                .padding(24.dp)
+                                .fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
                                 "👨‍⚕️",
-                                style = MaterialTheme.typography.headlineMedium
+                                style = MaterialTheme.typography.displaySmall
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "¡Completa tu perfil profesional!",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                "Mi Perfil",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                "Para empezar a trabajar con usuarios necesitas completar tus datos profesionales y obtener tu código único",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                textAlign = TextAlign.Center
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Text(
-                                "Datos profesionales",
+                                "Te redirigiremos en un momento...",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
                 }
+            } else {
+                // ✅ PANTALLA PRINCIPAL CON DATOS COMPLETOS
+                Column(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // ✅ CORREGIDO - Header con código profesional
+                    val currentUser by userViewModel.currentUser.collectAsState()
 
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = "👥 Usuarios asociados (${usuarios.size})",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold
-                )
-
-                if (usuarios.isEmpty()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(24.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
+                    profile?.let { prof ->
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                         ) {
-                            Text(
-                                "👤",
-                                style = MaterialTheme.typography.headlineLarge
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                "No tienes usuarios asociados",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Los usuarios que se asocien contigo aparecerán aquí",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "👋 ¡Hola, ${currentUser?.name ?: "Profesional"}!",
+                                        style = MaterialTheme.typography.headlineSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "${prof.especialidad} • Código: ${prof.idProfesional ?: "Generando..."}",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
                         }
                     }
-                } else {
-                    LazyColumn(
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(usuarios) { usuario ->
-                            UsuarioCard(
-                                usuario = usuario
-                                //EN VEREMOS
-//                                onVerReportes = {
-//                                    navController.navigate("reporteAvance/$role")
-//                                }
+
+                    Text(
+                        text = "Gestiona a tus usuarios asociados como ${role.replaceFirstChar { it.uppercase() }}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    if (role != "nutricionista") {
+                        // Card de acceso rápido para solicitudes
+                        Card(
+                            onClick = { navController.navigate("solicitudesPlanes/$role") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
                             )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Text("📝", style = MaterialTheme.typography.headlineLarge)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Solicitudes de Planes",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                    Text(
+                                        "Revisa y crea planes para tus usuarios",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                }
+                                Icon(
+                                    Icons.Default.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    }
+
+                    Text(
+                        text = "Usuarios Asociados (${usuarios.size})",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    if (usuarios.isEmpty()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .padding(32.dp)
+                                    .fillMaxWidth(),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    "No tienes usuarios asociados",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    "Los usuarios que se asocien contigo aparecerán aquí",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(usuarios) { usuario ->
+                                UsuarioCard(usuario = usuario)
+                            }
                         }
                     }
                 }
@@ -371,7 +362,7 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         }
                     }
                 ) {
-                    Text("Cerrar sesión")
+                    Text("Sí, cerrar sesión")
                 }
             },
             dismissButton = {
@@ -384,15 +375,10 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
 }
 
 @Composable
-private fun UsuarioCard(
-    usuario: User,
-//    onVerReportes: () -> Unit
-) {
+private fun UsuarioCard(usuario: User) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Row(
             modifier = Modifier
@@ -400,31 +386,13 @@ private fun UsuarioCard(
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Avatar del usuario
-            if (!usuario.photoUrl.isNullOrEmpty()) {
-                val painter = rememberAsyncImagePainter(
-                    ImageRequest.Builder(LocalContext.current)
-                        .data(usuario.photoUrl)
-                        .build()
-                )
-                Image(
-                    painter = painter,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                // Avatar por defecto
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primaryContainer),
-                    contentAlignment = Alignment.Center
-                ) {
+            // Avatar con inicial
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = usuario.name.firstOrNull()?.uppercase() ?: "U",
                         style = MaterialTheme.typography.titleMedium,
@@ -449,11 +417,6 @@ private fun UsuarioCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-//             EN VEREMOS
-//            // Botón para ver reportes
-//            TextButton(onClick = onVerReportes) {
-//                Text("Ver reportes")
-//            }
         }
     }
 }

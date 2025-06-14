@@ -9,5 +9,6 @@ data class PersonaProfile(
     val horaRecordatorio: Int? = 10,
     val minutoRecordatorio: Int? = 0,
     val recordatorioActivo: Boolean = false,
-    val contadorPasosActivo: Boolean = false
+    val contadorPasosActivo: Boolean = false,
+    val profesionales: Map<String, String>? = null
 )

@@ -11,6 +11,7 @@ class ProfesionalAsociadoRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
+    // ✅ ACTUALIZADO - Lee profesionales desde PersonaProfile
     suspend fun obtenerAsociados(): Map<String, User> {
         val uid = auth.currentUser?.uid ?: run {
             Log.w("ProfesionalRepo", "❌ No hay usuario autenticado")
@@ -20,15 +21,22 @@ class ProfesionalAsociadoRepository {
         Log.d("ProfesionalRepo", "🔍 Buscando asociados para usuario: $uid")
 
         try {
-            val userSnapshot = db.collection("users").document(uid).get().await()
-            Log.d("ProfesionalRepo", "📄 Documento del usuario obtenido: ${userSnapshot.exists()}")
+            // Obtener PersonaProfile en vez de User
+            val personaProfileSnapshot = db.collection("users")
+                .document(uid)
+                .collection("personaProfile")
+                .document("info")
+                .get()
+                .await()
 
-            if (!userSnapshot.exists()) {
-                Log.w("ProfesionalRepo", "❌ Documento del usuario no existe")
+            Log.d("ProfesionalRepo", "📄 PersonaProfile obtenido: ${personaProfileSnapshot.exists()}")
+
+            if (!personaProfileSnapshot.exists()) {
+                Log.w("ProfesionalRepo", "❌ PersonaProfile no existe")
                 return emptyMap()
             }
 
-            val profesionales = userSnapshot.get("profesionales") as? Map<*, *>
+            val profesionales = personaProfileSnapshot.get("profesionales") as? Map<*, *>
             Log.d("ProfesionalRepo", "👥 Campo profesionales: $profesionales")
 
             if (profesionales == null) {
@@ -86,6 +94,7 @@ class ProfesionalAsociadoRepository {
         }
     }
 
+    // ✅ ACTUALIZADO - Elimina desde PersonaProfile
     suspend fun eliminarAsociacion(tipo: String): Boolean {
         val uid = auth.currentUser?.uid ?: return false
         val campo = "profesionales.$tipo"
@@ -93,7 +102,13 @@ class ProfesionalAsociadoRepository {
         Log.d("ProfesionalRepo", "🗑️ Eliminando campo: $campo del usuario: $uid")
 
         return try {
-            db.collection("users").document(uid).update(campo, null).await()
+            db.collection("users")
+                .document(uid)
+                .collection("personaProfile")
+                .document("info")
+                .update(campo, null)
+                .await()
+
             Log.d("ProfesionalRepo", "✅ Asociación eliminada correctamente")
             true
         } catch (e: Exception) {
