@@ -1,5 +1,6 @@
 package com.isoft.weighttracker.feature.profesional.ui
 
+import android.graphics.Insets.add
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

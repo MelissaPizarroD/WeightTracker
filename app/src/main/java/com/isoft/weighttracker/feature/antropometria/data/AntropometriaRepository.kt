@@ -25,6 +25,19 @@ class AntropometriaRepository {
         }
     }
 
+    suspend fun obtenerRegistrosDeUsuario(usuarioId: String): List<Antropometria> {
+        val snapshot = db.collection("users")
+            .document(usuarioId)
+            .collection("registros_antropometricos")
+            .orderBy("fecha", Query.Direction.DESCENDING)
+            .get()
+            .await()
+
+        return snapshot.documents.mapNotNull { doc ->
+            doc.toObject(Antropometria::class.java)?.copy(id = doc.id)
+        }
+    }
+
     suspend fun guardarRegistro(registro: Antropometria) {
         val uid = auth.currentUser?.uid ?: return
 

@@ -132,6 +132,7 @@ fun MisPlanesScreen(
                     items(planesEntrenamiento) { plan ->
                         PlanEntrenamientoCard(
                             plan = plan,
+                            navController = navController, // ✅ Agrega esta línea
                             onActivar = { planesViewModel.activarPlanEntrenamiento(plan.id) },
                             onDesactivar = { planesViewModel.desactivarPlanEntrenamiento(plan.id) }
                         )
@@ -422,6 +423,12 @@ private fun PlanNutricionalCard(
                 ) {
                     Text("Ver Plan")
                 }
+
+                Button(onClick = {
+                    navController.navigate("verPlanEntrenamiento/${plan.id}")
+                }) {
+                    Text("Ver Plan")
+                }
             }
         }
     }
@@ -432,7 +439,8 @@ private fun PlanNutricionalCard(
 private fun PlanEntrenamientoCard(
     plan: PlanEntrenamiento,
     onActivar: () -> Unit,
-    onDesactivar: () -> Unit
+    onDesactivar: () -> Unit,
+    navController: NavController
 ) {
     val dateFormat = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
     val esActivo = plan.estado == EstadoPlan.ACTIVO
@@ -440,16 +448,11 @@ private fun PlanEntrenamientoCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = if (esActivo) {
-                MaterialTheme.colorScheme.secondaryContainer
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
+            containerColor = if (esActivo) MaterialTheme.colorScheme.secondaryContainer
+            else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -457,7 +460,7 @@ private fun PlanEntrenamientoCard(
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        "💪 Plan de Entrenamiento",
+                        "💪 ${plan.nombrePlan}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
@@ -499,43 +502,17 @@ private fun PlanEntrenamientoCard(
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            Text(
-                "🏋️ Tipo: ${plan.tipoEjercicio}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "📍 Lugar: ${plan.lugarRealizacion}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Text(
-                "📅 Frecuencia: ${plan.frecuencia}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer
-                else MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Text("🎯 Objetivo: ${plan.objetivo}", style = MaterialTheme.typography.bodyMedium)
+            Text("📅 Duración: ${plan.duracionSemanas} semanas", style = MaterialTheme.typography.bodyMedium)
+            Text("📆 Frecuencia: ${plan.frecuenciaSemanal}", style = MaterialTheme.typography.bodyMedium)
 
-            if (plan.ejercicios.isNotEmpty()) {
+            if (plan.sesiones.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    "💪 ${plan.ejercicios.size} ejercicios incluidos",
+                    "🗓️ ${plan.sesiones.size} sesiones incluidas",
                     style = MaterialTheme.typography.bodySmall,
                     color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                     else MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (plan.observaciones.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    "📝 ${plan.observaciones}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (esActivo) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
-                    else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2
                 )
             }
 
@@ -580,7 +557,7 @@ private fun PlanEntrenamientoCard(
 
                 OutlinedButton(
                     onClick = {
-                        // TODO: Implementar ver plan de entrenamiento
+                        navController.navigate("verPlanEntrenamiento/${plan.id}")
                     },
                     modifier = Modifier.weight(1f),
                     colors = ButtonDefaults.outlinedButtonColors(

@@ -26,6 +26,9 @@ class PlanesViewModel : ViewModel() {
     private val _planesEntrenamiento = MutableStateFlow<List<PlanEntrenamiento>>(emptyList())
     val planesEntrenamiento: StateFlow<List<PlanEntrenamiento>> = _planesEntrenamiento
 
+    private val _planActual = MutableStateFlow<PlanEntrenamiento?>(null)
+    val planActual: StateFlow<PlanEntrenamiento?> = _planActual
+
     // Estados de UI
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading
@@ -289,32 +292,6 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ METODO ACTUALIZADO: Para crear plan nutricional desde solicitud (profesionales)
-    fun crearPlanNutricional(
-        solicitudId: String,
-        plan: PlanNutricional
-    ) {
-        viewModelScope.launch {
-            _isLoading.value = true
-
-            val planId = repository.crearPlanNutricional(plan)
-
-            if (planId != null) {
-                val completada = repository.marcarSolicitudComoCompletada(solicitudId, planId)
-                if (completada) {
-                    _mensaje.value = "Plan nutricional creado exitosamente"
-                    cargarSolicitudesProfesional()
-                } else {
-                    _mensaje.value = "Plan creado pero error al actualizar solicitud"
-                }
-            } else {
-                _mensaje.value = "Error al crear el plan nutricional"
-            }
-
-            _isLoading.value = false
-        }
-    }
-
     fun crearPlanEntrenamiento(
         solicitudId: String,
         plan: PlanEntrenamiento,
@@ -356,6 +333,15 @@ class PlanesViewModel : ViewModel() {
             } catch (e: Exception) {
                 _mensaje.value = "Error al completar la solicitud: ${e.message}"
             }
+        }
+    }
+
+    fun cargarPlanEntrenamiento(planId: String) {
+        viewModelScope.launch {
+            _isLoading.value = true
+            val plan = repository.obtenerPlanEntrenamientoPorId(planId)
+            _planActual.value = plan
+            _isLoading.value = false
         }
     }
 

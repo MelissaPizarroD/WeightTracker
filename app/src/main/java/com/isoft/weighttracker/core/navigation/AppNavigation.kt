@@ -12,43 +12,43 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.google.gson.Gson
-import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
-import com.isoft.weighttracker.feature.login.ui.LoginScreen
-import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModel
-import com.isoft.weighttracker.feature.comidas.viewmodel.ComidaViewModel
-import com.isoft.weighttracker.feature.antropometria.viewmodel.AntropometriaViewModel
-import com.isoft.weighttracker.feature.selectRole.ui.SelectRoleScreen
+import com.isoft.weighttracker.core.permissions.PermissionViewModel
 import com.isoft.weighttracker.feature.DatosPersonales.ui.DatosPersonalesScreen
-import com.isoft.weighttracker.feature.comidas.ui.RegistrarComidasScreen
-import com.isoft.weighttracker.feature.comidas.ui.HistorialComidasScreen
 import com.isoft.weighttracker.feature.actividadfisica.model.ActividadFisica
 import com.isoft.weighttracker.feature.actividadfisica.ui.HistorialActividadFisicaScreen
 import com.isoft.weighttracker.feature.actividadfisica.ui.RegistrarActividadFisicaScreen
 import com.isoft.weighttracker.feature.actividadfisica.viewmodel.ActividadFisicaViewModel
-import com.isoft.weighttracker.feature.asociar.ui.AsociarProfesionalScreen
+import com.isoft.weighttracker.feature.antropometria.model.Antropometria
 import com.isoft.weighttracker.feature.antropometria.ui.HistorialAntropometricoScreen
 import com.isoft.weighttracker.feature.antropometria.ui.RegistroAntropometricoScreen
+import com.isoft.weighttracker.feature.antropometria.viewmodel.AntropometriaViewModel
+import com.isoft.weighttracker.feature.asociar.ui.AsociarProfesionalScreen
+import com.isoft.weighttracker.feature.comidas.model.Comida
+import com.isoft.weighttracker.feature.comidas.ui.HistorialComidasScreen
+import com.isoft.weighttracker.feature.comidas.ui.RegistrarComidasScreen
+import com.isoft.weighttracker.feature.comidas.viewmodel.ComidaViewModel
+import com.isoft.weighttracker.feature.login.ui.LoginScreen
+import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModel
 import com.isoft.weighttracker.feature.metas.ui.HistorialMetasScreen
 import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
-import com.isoft.weighttracker.feature.comidas.model.Comida
-import com.isoft.weighttracker.feature.antropometria.model.Antropometria
-import com.isoft.weighttracker.core.permissions.PermissionViewModel
-import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
+import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
+import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
+import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
+import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
+import com.isoft.weighttracker.feature.planes.ui.MisPlanesScreen
+import com.isoft.weighttracker.feature.planes.ui.SolicitarPlanScreen
+import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
+import com.isoft.weighttracker.feature.planes.ui.VerPlanEntrenamientoScreen
+import com.isoft.weighttracker.feature.planes.ui.VerPlanNutricionalScreen
 import com.isoft.weighttracker.feature.profesional.datosProf.ui.DatosProfesionalScreen
-import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
+import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
 import com.isoft.weighttracker.feature.profesional.retroalimentacion.RetroalimentacionScreen
+import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.DetalleReporteScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.GraficasAnaliticasScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.HistorialReportesScreen
 import com.isoft.weighttracker.feature.reporteAvance.ui.RegistrarReporteScreen
-// ✅ IMPORTACIONES PARA PLANES
-import com.isoft.weighttracker.feature.planes.ui.SolicitarPlanScreen
-import com.isoft.weighttracker.feature.planes.ui.MisPlanesScreen
-import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
-import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
-import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
-import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
-import com.isoft.weighttracker.feature.planes.ui.VerPlanNutricionalScreen
+import com.isoft.weighttracker.feature.selectRole.ui.SelectRoleScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -272,6 +272,14 @@ fun AppNavigation(
             val decoded = URLDecoder.decode(solicitudJson, StandardCharsets.UTF_8.toString())
             val solicitud = Gson().fromJson(decoded, SolicitudPlan::class.java)
             CrearPlanEntrenamientoScreen(navController, solicitud)
+        }
+
+        composable(
+            "verPlanEntrenamiento/{planId}",
+            arguments = listOf(navArgument("planId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val planId = backStackEntry.arguments?.getString("planId") ?: ""
+            VerPlanEntrenamientoScreen(navController, planId)
         }
     }
 }

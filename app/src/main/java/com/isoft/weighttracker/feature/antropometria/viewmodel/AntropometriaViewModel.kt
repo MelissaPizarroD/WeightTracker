@@ -32,6 +32,16 @@ class AntropometriaViewModel : ViewModel() {
         }
     }
 
+    private val _registrosDeUsuario = MutableStateFlow<List<Antropometria>>(emptyList())
+    val registrosDeUsuario: StateFlow<List<Antropometria>> = _registrosDeUsuario
+
+    fun cargarRegistrosDeUsuario(usuarioId: String) {
+        viewModelScope.launch {
+            val data = repository.obtenerRegistrosDeUsuario(usuarioId)
+            _registrosDeUsuario.value = data
+        }
+    }
+
     fun guardarRegistroNuevo(
         peso: Float,
         cintura: Float,
