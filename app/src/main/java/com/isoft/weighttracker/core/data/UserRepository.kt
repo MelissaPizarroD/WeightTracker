@@ -16,24 +16,51 @@ class UserRepository {
     private val db = FirebaseFirestore.getInstance()
     private val auth = FirebaseAuth.getInstance()
 
+
     suspend fun createUserIfNotExists(): Boolean {
-        val user = auth.currentUser ?: return false
-        val uid = user.uid
-        val userRef = db.collection("users").document(uid)
-        val snapshot = userRef.get().await()
+        return try {
+            val firebaseUser = auth.currentUser
+            if (firebaseUser == null) {
+                Log.e("UserRepo", "❌ No hay usuario autenticado en Firebase")
+                return false
+            }
 
-        if (!snapshot.exists()) {
-            val newUser = User(
-                uid = uid,
-                name = user.displayName ?: "",
-                email = user.email ?: "",
-                role = "",
-                photoUrl = user.photoUrl?.toString()
-            )
-            userRef.set(newUser).await()
+            val uid = firebaseUser.uid
+            Log.d("UserRepo", "🔍 Verificando usuario: $uid")
+
+            val userRef = db.collection("users").document(uid)
+            val snapshot = userRef.get().await()
+
+            if (!snapshot.exists()) {
+                Log.d("UserRepo", "👤 Usuario nuevo, creando en Firestore...")
+
+                val newUser = User(
+                    uid = uid,
+                    name = firebaseUser.displayName ?: "",
+                    email = firebaseUser.email ?: "",
+                    role = "", // ✅ Explícitamente vacío para usuarios nuevos
+                    photoUrl = firebaseUser.photoUrl?.toString()
+                )
+
+                userRef.set(newUser).await()
+                Log.d("UserRepo", "✅ Usuario creado exitosamente:")
+                Log.d("UserRepo", "   - UID: ${newUser.uid}")
+                Log.d("UserRepo", "   - Email: ${newUser.email}")
+                Log.d("UserRepo", "   - Name: ${newUser.name}")
+                Log.d("UserRepo", "   - Role: '${newUser.role}' (vacío para selección)")
+
+            } else {
+                Log.d("UserRepo", "✅ Usuario ya existe en Firestore")
+                val existingUser = snapshot.toObject(User::class.java)
+                Log.d("UserRepo", "   - Role actual: '${existingUser?.role}'")
+            }
+
+            return true
+
+        } catch (e: Exception) {
+            Log.e("UserRepo", "❌ Error en createUserIfNotExists: ${e.message}", e)
+            return false
         }
-
-        return true
     }
 
     suspend fun getUser(): User? {

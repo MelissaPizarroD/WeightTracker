@@ -29,6 +29,7 @@ import com.isoft.weighttracker.feature.comidas.ui.RegistrarComidasScreen
 import com.isoft.weighttracker.feature.comidas.viewmodel.ComidaViewModel
 import com.isoft.weighttracker.feature.login.ui.LoginScreen
 import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModel
+import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModelFactory
 import com.isoft.weighttracker.feature.metas.ui.HistorialMetasScreen
 import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
 import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
@@ -52,6 +53,10 @@ import com.isoft.weighttracker.feature.selectRole.ui.SelectRoleScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import androidx.activity.ComponentActivity
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import com.isoft.weighttracker.feature.login.viewmodel.NavigationEvent
 
 @Composable
 fun AppNavigation(
@@ -68,16 +73,47 @@ fun AppNavigation(
     )
 
     NavHost(navController = navController, startDestination = "login") {
+
+
+
         composable("login") {
-            LoginScreen(navController)
+            val activity = context as ComponentActivity
+            val viewModel: LoginViewModel = viewModel(
+                factory = LoginViewModelFactory(
+                    application = activity.application,
+                    activity = activity
+                )
+            )
+            LoginScreen(navController, viewModel)
         }
 
         composable("selectRole") {
-            val viewModel: LoginViewModel = viewModel()
+            val activity = context as ComponentActivity
+            val viewModel: LoginViewModel = viewModel(
+                factory = LoginViewModelFactory(
+                    application = activity.application,
+                    activity = activity
+                )
+            )
             SelectRoleScreen { role ->
                 viewModel.updateUserRole(role)
-                navController.navigate("home/$role") {
-                    popUpTo("selectRole") { inclusive = true }
+                // Se elimina esta navegación manual, el ViewModel la maneja automáticamente
+                // navController.navigate("home/$role") {
+                //     popUpTo("selectRole") { inclusive = true }
+                // }
+            }
+
+            // ✅ AGREGA: Observar el NavigationEvent del ViewModel
+            val navigationEvent = viewModel.navigationEvent.collectAsState()
+            LaunchedEffect(navigationEvent.value) {
+                when (val event = navigationEvent.value) {
+                    is NavigationEvent.GoToHome -> {
+                        navController.navigate("home/${event.role}") {
+                            popUpTo("selectRole") { inclusive = true }
+                        }
+                        viewModel.clearNavigation()
+                    }
+                    else -> Unit
                 }
             }
         }

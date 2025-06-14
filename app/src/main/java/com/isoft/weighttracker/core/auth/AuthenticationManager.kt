@@ -1,6 +1,7 @@
 package com.isoft.weighttracker.core.auth
 
 import android.content.Context
+import androidx.activity.ComponentActivity
 import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
@@ -17,7 +18,10 @@ import kotlinx.coroutines.flow.callbackFlow
 import java.security.MessageDigest
 import java.util.UUID
 
-class AuthenticationManager(private val context: Context) {
+class AuthenticationManager(
+    private val context: Context,
+    private val activity: ComponentActivity // ✅ Agregamos referencia a la Activity
+) {
     private val auth = Firebase.auth
 
     sealed interface AuthResponse {
@@ -46,14 +50,15 @@ class AuthenticationManager(private val context: Context) {
             .build()
 
         try {
-            val credentialManager = CredentialManager.Companion.create(context)
-            val result = credentialManager.getCredential(context, request)
+            val credentialManager = CredentialManager.create(context)
+            // ✅ CAMBIO PRINCIPAL: Usar activity en lugar de context para getCredential
+            val result = credentialManager.getCredential(activity, request)
             val credential = result.credential
 
-            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
+            if (credential is CustomCredential && credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                 try {
                     val googleIdTokenCredential =
-                        GoogleIdTokenCredential.Companion.createFrom(credential.data)
+                        GoogleIdTokenCredential.createFrom(credential.data)
                     val firebaseCredential = GoogleAuthProvider.getCredential(
                         googleIdTokenCredential.idToken, null
                     )

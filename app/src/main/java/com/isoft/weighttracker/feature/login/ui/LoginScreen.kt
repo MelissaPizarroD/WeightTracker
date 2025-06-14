@@ -2,14 +2,12 @@ package com.isoft.weighttracker.feature.login.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.R
@@ -20,7 +18,7 @@ import com.isoft.weighttracker.feature.login.viewmodel.NavigationEvent
 @Composable
 fun LoginScreen(
     navController: NavController,
-    viewModel: LoginViewModel = viewModel()
+    viewModel: LoginViewModel // ✅ Recibe el ViewModel como parámetro
 ) {
     val authState = viewModel.authState.collectAsState()
     val navigationEvent = viewModel.navigationEvent.collectAsState()

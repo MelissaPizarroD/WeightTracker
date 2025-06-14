@@ -1,170 +1,79 @@
-@file:OptIn(ExperimentalMaterial3Api::class)
-
 package com.isoft.weighttracker.feature.profesional.ui
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import coil.compose.rememberAsyncImagePainter
-import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.model.User
 import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
 import com.isoft.weighttracker.shared.UserViewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfesionalHomeScreen(navController: NavController, role: String) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val clipboard = LocalClipboardManager.current
+
     val viewModel: ProfesionalViewModel = viewModel()
     val userViewModel: UserViewModel = viewModel()
     val usuarios by viewModel.usuariosAsociados.collectAsState()
-    val currentUser by userViewModel.currentUser.collectAsState()
     val profesionalProfile by userViewModel.profesionalProfile.collectAsState()
+    val currentUser by userViewModel.currentUser.collectAsState()
+
+    var cargando by remember { mutableStateOf(true) }
+    var mostrarAviso by remember { mutableStateOf(false) }
+    var showLogoutDialog by remember { mutableStateOf(false) }
 
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    var showLogoutDialog by remember { mutableStateOf(false) }
-    var cargandoDatos by remember { mutableStateOf(true) }
-    var mostrandoAviso by remember { mutableStateOf(false) }
+
+    val menuItems = listOf(
+        "Perfil Profesional" to "datosProfesional",
+        "Solicitudes de Planes" to "solicitudesPlanes/$role",
+        "Planes Creados" to "planesCreados/$role",
+        "Reportes de Avance" to "reporteAvance/$role"
+    )
 
     val perfilCompleto = profesionalProfile?.let {
-        it.especialidad.isNotBlank() && it.estudios.isNotBlank() && it.cedula.isNotBlank() &&
-                it.experiencia.isNotBlank() && !it.idProfesional.isNullOrBlank()
+        it.especialidad.isNotBlank() && it.estudios.isNotBlank() && it.cedula.isNotBlank() && it.experiencia.isNotBlank()
     } ?: false
 
-    // Carga inicial
     LaunchedEffect(Unit) {
         userViewModel.loadUser()
         userViewModel.loadProfesionalProfile()
         viewModel.cargarUsuariosAsociados(role)
     }
 
-    // Validaciones luego de cargar
     LaunchedEffect(profesionalProfile) {
-        if (cargandoDatos) {
-            delay(1500)
-            cargandoDatos = false
-            if (!perfilCompleto) mostrandoAviso = true
-        } else {
-            if (perfilCompleto && mostrandoAviso) {
-                delay(1000)
-                mostrandoAviso = false
-            }
+        if (cargando) {
+            kotlinx.coroutines.delay(1500)
+            cargando = false
+            if (!perfilCompleto) mostrarAviso = true
         }
     }
 
-    // MENÚ lateral con información del profesional
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        val photoUrl = currentUser?.photoUrl
-                        Box(
-                            modifier = Modifier
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.primary)
-                        ) {
-                            if (!photoUrl.isNullOrEmpty()) {
-                                Image(
-                                    painter = rememberAsyncImagePainter(
-                                        ImageRequest.Builder(context)
-                                            .data(photoUrl)
-                                            .crossfade(true)
-                                            .build()
-                                    ),
-                                    contentDescription = "Foto",
-                                    contentScale = ContentScale.Crop,
-                                    modifier = Modifier.fillMaxSize()
-                                )
-                            } else {
-                                Icon(
-                                    Icons.Default.Person,
-                                    contentDescription = "Avatar",
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(12.dp)
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                currentUser?.name ?: "Profesional",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
-                            )
-                            Text(
-                                currentUser?.email ?: "",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                            )
-                            Surface(
-                                shape = MaterialTheme.shapes.small,
-                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text(
-                                    text = "🩺 Profesional",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
-
-                val menuItems = listOf(
-                    "Perfil Profesional" to "datosProfesional",
-                    "Solicitudes de Planes" to "solicitudesPlanes/$role",
-                    "Planes Creados" to "planesCreados/$role",
-                    "Reportes de Avance" to "reporteAvance/$role"
-                )
-
-                Text(
-                    text = "Menú",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
-                )
-
+                Text("Menú", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
+                Divider()
                 menuItems.forEach { (label, route) ->
                     NavigationDrawerItem(
                         label = { Text(label) },
@@ -176,22 +85,13 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
-
                 Spacer(modifier = Modifier.weight(1f))
-                Divider(modifier = Modifier.padding(horizontal = 16.dp))
-
+                Divider()
                 NavigationDrawerItem(
-                    label = {
-                        Text("🚪 Cerrar sesión", color = MaterialTheme.colorScheme.error)
-                    },
+                    label = { Text("Cerrar sesión") },
                     selected = false,
-                    onClick = {
-                        scope.launch { drawerState.close() }
-                        showLogoutDialog = true
-                    },
-                    modifier = Modifier
-                        .padding(NavigationDrawerItemDefaults.ItemPadding)
-                        .padding(bottom = 16.dp)
+                    onClick = { showLogoutDialog = true },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                 )
             }
         }
@@ -209,182 +109,207 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         IconButton(onClick = { viewModel.cargarUsuariosAsociados(role) }) {
                             Icon(Icons.Default.Refresh, contentDescription = "Actualizar")
                         }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        titleContentColor = MaterialTheme.colorScheme.onPrimary
-                    )
+                    }
                 )
             }
+
         ) { innerPadding ->
-            when {
-                cargandoDatos -> {
-                    Box(
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize(),
-                        contentAlignment = Alignment.Center
+            if (cargando) {
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else if (mostrarAviso) {
+                LaunchedEffect(Unit) {
+                    kotlinx.coroutines.delay(3000)
+                    navController.navigate("datosProfesional")
+                }
+                Box(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                     ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
+                        Column(
+                            modifier = Modifier.padding(24.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("👨‍⚕️", style = MaterialTheme.typography.displaySmall)
                             Spacer(modifier = Modifier.height(16.dp))
+                            Text("¡Completa tu perfil profesional!", style = MaterialTheme.typography.headlineSmall)
                             Text(
-                                "Cargando perfil profesional...",
+                                "Para comenzar a trabajar con usuarios necesitas completar tus datos.",
+                                textAlign = TextAlign.Center,
                                 style = MaterialTheme.typography.bodyMedium
                             )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                         }
                     }
                 }
-
-                mostrandoAviso -> {
-                    LaunchedEffect(Unit) {
-                        delay(3000)
-                        navController.navigate("datosProfesional")
-                    }
-
-                    Box(
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize()
-                            .padding(32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .padding(innerPadding)
+                        .fillMaxSize()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                    contentPadding = PaddingValues(bottom = 100.dp)
+                ) {
+                    item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("👨‍⚕️", style = MaterialTheme.typography.displaySmall)
-                                Spacer(modifier = Modifier.height(16.dp))
-                                Text(
-                                    "¡Completa tu perfil profesional!",
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Text(
-                                    "Para empezar a trabajar con usuarios necesitas completar tus datos profesionales.",
-                                    textAlign = TextAlign.Center,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                                Spacer(modifier = Modifier.height(12.dp))
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            }
-                        }
-                    }
-                }
-
-                else -> {
-                    Column(
-                        modifier = Modifier
-                            .padding(innerPadding)
-                            .fillMaxSize()
-                            .padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(20.dp)
-                    ) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Text(
                                     "👋 ¡Hola ${currentUser?.name ?: "Profesional"}!",
-                                    style = MaterialTheme.typography.headlineMedium,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    fontWeight = FontWeight.Bold
                                 )
                                 Text(
-                                    "¿Listo para guiar a tus usuarios hoy?",
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    profesionalProfile?.especialidad.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             }
                         }
+                    }
 
-                        // Acciones rápidas
-                        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Row(
+                    profesionalProfile?.idProfesional?.let { codigo ->
+                        item {
+                            Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
                             ) {
-                                ActionCard(
-                                    icon = "📝",
-                                    title = "Solicitudes",
-                                    subtitle = "Ver solicitudes de planes",
-                                    onClick = { navController.navigate("solicitudesPlanes/$role") },
-                                    color = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-
-                                ActionCard(
-                                    icon = "📋",
-                                    title = "Planes",
-                                    subtitle = "Planes creados",
-                                    onClick = { navController.navigate("planesCreados/$role") },
-                                    color = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                )
-                            }
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                ActionCard(
-                                    icon = "📊",
-                                    title = "Reportes",
-                                    subtitle = "Progreso de usuarios",
-                                    onClick = { navController.navigate("reporteAvance/$role") },
-                                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
+                                Column(modifier = Modifier.padding(16.dp)) {
+                                    Text(
+                                        "🆔 Tu Código Profesional",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            codigo,
+                                            style = MaterialTheme.typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                        IconButton(onClick = {
+                                            clipboard.setText(AnnotatedString(codigo))
+                                            Toast.makeText(context, "Código copiado", Toast.LENGTH_SHORT).show()
+                                        }) {
+                                            Icon(Icons.Default.ContentCopy, contentDescription = null)
+                                        }
+                                    }
+                                    Text(
+                                        "Comparte este código con usuarios para que te encuentren.",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
+                    }
 
-                        // Usuarios asociados
+                    item {
+                        Card(
+                            onClick = { navController.navigate("reporteAvance/$role") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text("📈", style = MaterialTheme.typography.headlineLarge)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text("Reportes de Avance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    Text("Visualizá el progreso de tus usuarios", style = MaterialTheme.typography.bodySmall)
+                                }
+                                Icon(Icons.Default.ArrowForward, contentDescription = null)
+                            }
+                        }
+                    }
+
+                    if (role != "nutricionista") {
+                        item {
+                            Card(
+                                onClick = { navController.navigate("solicitudesPlanes/$role") },
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    Text("📝", style = MaterialTheme.typography.headlineLarge)
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            "Solicitudes de Planes",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            "Revisa y crea planes para tus usuarios",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                    Icon(Icons.Default.ArrowForward, contentDescription = null)
+                                }
+                            }
+                        }
+                    }
+
+                    item {
                         Text(
                             "Usuarios Asociados (${usuarios.size})",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
+                    }
 
-                        if (usuarios.isEmpty()) {
+                    if (usuarios.isEmpty()) {
+                        item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 Column(
-                                    modifier = Modifier
-                                        .padding(32.dp)
-                                        .fillMaxWidth(),
+                                    modifier = Modifier.padding(32.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text(
-                                        "No tienes usuarios asociados",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                                    Text("No tienes usuarios asociados", style = MaterialTheme.typography.titleMedium)
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Aparecerán aquí cuando se asocien contigo.",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        "Aquí aparecerán cuando se asocien contigo",
+                                        style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
                             }
-                        } else {
-                            LazyColumn(
-                                verticalArrangement = Arrangement.spacedBy(8.dp),
-                                contentPadding = PaddingValues(bottom = 80.dp)
-                            ) {
-                                items(usuarios) { usuario ->
-                                    UsuarioCard(usuario)
-                                }
-                            }
+                        }
+                    } else {
+                        items(usuarios) { usuario ->
+                            UsuarioCard(usuario)
                         }
                     }
                 }
@@ -392,100 +317,54 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
         }
     }
 
-    // Diálogo cerrar sesión
-    if (showLogoutDialog) {
-        AlertDialog(
-            onDismissRequest = { showLogoutDialog = false },
-            title = { Text("Cerrar sesión") },
-            text = { Text("¿Estás seguro de que quieres cerrar sesión?") },
-            confirmButton = {
-                TextButton(onClick = {
-                    FirebaseAuth.getInstance().signOut()
-                    navController.navigate("login") {
-                        popUpTo(0) { inclusive = true }
-                    }
-                }) { Text("Sí, cerrar sesión") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showLogoutDialog = false }) {
-                    Text("Cancelar")
-                }
+    LogoutDialog(
+        show = showLogoutDialog,
+        onDismiss = { showLogoutDialog = false },
+        onConfirm = {
+            showLogoutDialog = false
+            userViewModel.clearUser()
+            navController.navigate("login") {
+                popUpTo(0)
             }
-        )
-    }
-}
-
-@Composable
-private fun ActionCard(
-    icon: String,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    color: Color,
-    contentColor: Color
-) {
-    Card(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(120.dp),
-        colors = CardDefaults.cardColors(containerColor = color),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(icon, style = MaterialTheme.typography.headlineLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = contentColor)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = contentColor, textAlign = TextAlign.Center)
         }
-    }
+    )
 }
 
 @Composable
-private fun UsuarioCard(usuario: User) {
+fun UsuarioCard(user: User) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = usuario.name.firstOrNull()?.uppercase() ?: "U",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontWeight = FontWeight.Bold
-                    )
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(user.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(user.email, style = MaterialTheme.typography.bodySmall)
+            Text("Rol: ${user.role}", style = MaterialTheme.typography.bodySmall)
+        }
+    }
+}
+
+@Composable
+fun LogoutDialog(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
+    if (show) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            title = { Text("¿Cerrar sesión?") },
+            text = { Text("¿Estás seguro de que querés salir de la aplicación?") },
+            confirmButton = {
+                TextButton(onClick = onConfirm) {
+                    Text("Sí")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("Cancelar")
                 }
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = usuario.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = usuario.email,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        )
     }
 }
