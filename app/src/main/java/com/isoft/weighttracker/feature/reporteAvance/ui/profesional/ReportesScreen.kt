@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.profesional.reportes
+package com.isoft.weighttracker.feature.reporteAvance.ui.profesional
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -14,16 +14,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.google.firebase.auth.FirebaseAuth
-import com.isoft.weighttracker.core.data.UserRepository
 import com.isoft.weighttracker.core.model.User
 import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

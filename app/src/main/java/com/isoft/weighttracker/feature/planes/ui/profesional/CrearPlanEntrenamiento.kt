@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.profesional
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -21,7 +21,6 @@ import com.isoft.weighttracker.feature.antropometria.viewmodel.AntropometriaView
 import com.isoft.weighttracker.feature.planes.model.*
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
 import com.isoft.weighttracker.shared.UserViewModel
-import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.UUID
 

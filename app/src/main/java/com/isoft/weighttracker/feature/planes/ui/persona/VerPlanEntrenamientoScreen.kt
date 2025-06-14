@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.persona
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,7 +17,6 @@ import com.isoft.weighttracker.feature.planes.model.PlanEntrenamiento
 import com.isoft.weighttracker.feature.planes.model.SesionEntrenamiento
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
 import java.text.SimpleDateFormat
-import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

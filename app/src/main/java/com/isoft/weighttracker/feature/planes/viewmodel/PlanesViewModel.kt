@@ -20,8 +20,6 @@ class PlanesViewModel : ViewModel() {
     val solicitudesProfesional: StateFlow<List<SolicitudPlan>> = _solicitudesProfesional
 
     // Estados para planes
-    private val _planesNutricion = MutableStateFlow<List<PlanNutricional>>(emptyList())
-    val planesNutricion: StateFlow<List<PlanNutricional>> = _planesNutricion
 
     private val _planesEntrenamiento = MutableStateFlow<List<PlanEntrenamiento>>(emptyList())
     val planesEntrenamiento: StateFlow<List<PlanEntrenamiento>> = _planesEntrenamiento
@@ -44,7 +42,7 @@ class PlanesViewModel : ViewModel() {
         descripcion: String,
         nombreUsuario: String,
         emailUsuario: String,
-        // PARÁMETROS DE NUTRICIÓN
+        // PARÁMETROS DE NUTRICIÓN - Se deja para futuro
         objetivoNutricion: String = "",
         nivelActividad: String = "",
         restricciones: List<String> = emptyList(),
@@ -105,10 +103,10 @@ class PlanesViewModel : ViewModel() {
         viewModelScope.launch {
             _isLoading.value = true
 
-            val planesNut = repository.obtenerPlanesNutricionUsuario()
+            //val planesNut = repository.obtenerPlanesNutricionUsuario()
             val planesEnt = repository.obtenerPlanesEntrenamientoUsuario()
 
-            _planesNutricion.value = planesNut
+            //_planesNutricion.value = planesNut
             _planesEntrenamiento.value = planesEnt
 
             _isLoading.value = false
@@ -117,51 +115,39 @@ class PlanesViewModel : ViewModel() {
 
     // ===== FUNCIONES PARA PLANES NUTRICIONALES =====
 
-    fun activarPlanNutricional(planId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
+//    fun activarPlanNutricional(planId: String) {
+//        viewModelScope.launch {
+//            _isLoading.value = true
+//
+//            val activado = repository.activarPlanNutricional(planId)
+//
+//            if (activado) {
+//                _mensaje.value = "✅ Plan nutricional activado"
+//                cargarPlanesUsuario() // Recargar para mostrar el estado actualizado
+//            } else {
+//                _mensaje.value = "❌ Error al activar el plan"
+//            }
+//
+//            _isLoading.value = false
+//        }
+//    }
 
-            val activado = repository.activarPlanNutricional(planId)
-
-            if (activado) {
-                _mensaje.value = "✅ Plan nutricional activado"
-                cargarPlanesUsuario() // Recargar para mostrar el estado actualizado
-            } else {
-                _mensaje.value = "❌ Error al activar el plan"
-            }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun desactivarPlanNutricional(planId: String) {
-        viewModelScope.launch {
-            _isLoading.value = true
-
-            val desactivado = repository.desactivarPlanNutricional(planId)
-
-            if (desactivado) {
-                _mensaje.value = "✅ Plan nutricional desactivado"
-                cargarPlanesUsuario()
-            } else {
-                _mensaje.value = "❌ Error al desactivar el plan"
-            }
-
-            _isLoading.value = false
-        }
-    }
-
-    fun obtenerPlanNutricionalPorId(planId: String, onComplete: (PlanNutricional?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val plan = repository.obtenerPlanNutricionalPorId(planId)
-                onComplete(plan)
-            } catch (e: Exception) {
-                _mensaje.value = "❌ Error al obtener plan: ${e.message}"
-                onComplete(null)
-            }
-        }
-    }
+//    fun desactivarPlanNutricional(planId: String) {
+//        viewModelScope.launch {
+//            _isLoading.value = true
+//
+//            val desactivado = repository.desactivarPlanNutricional(planId)
+//
+//            if (desactivado) {
+//                _mensaje.value = "✅ Plan nutricional desactivado"
+//                cargarPlanesUsuario()
+//            } else {
+//                _mensaje.value = "❌ Error al desactivar el plan"
+//            }
+//
+//            _isLoading.value = false
+//        }
+//    }
 
     // ===== FUNCIONES PARA PLANES DE ENTRENAMIENTO =====
 
@@ -199,18 +185,6 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    fun obtenerPlanEntrenamientoPorId(planId: String, onComplete: (PlanEntrenamiento?) -> Unit) {
-        viewModelScope.launch {
-            try {
-                val plan = repository.obtenerPlanEntrenamientoPorId(planId)
-                onComplete(plan)
-            } catch (e: Exception) {
-                _mensaje.value = "❌ Error al obtener plan: ${e.message}"
-                onComplete(null)
-            }
-        }
-    }
-
     // ===== FUNCIONES PARA PROFESIONALES =====
 
     fun cargarSolicitudesProfesional() {
@@ -222,9 +196,7 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Rechaza una solicitud con un motivo específico
-     */
+     //Rechaza una solicitud con un motivo específico
     fun rechazarSolicitud(solicitudId: String, motivoRechazo: String) {
         viewModelScope.launch {
             _isLoading.value = true
@@ -245,9 +217,7 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Obtiene una solicitud específica por ID
-     */
+     //Obtiene una solicitud específica por ID
     fun obtenerSolicitudPorId(solicitudId: String, onComplete: (SolicitudPlan?) -> Unit) {
         viewModelScope.launch {
             try {
@@ -260,37 +230,36 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ METODO ACTUALIZADO: Para crear plan nutricional con categorías
-    fun crearPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-
-                // Activar el plan automáticamente
-                val planConActivacion = plan.copy(
-                    fechaActivacion = System.currentTimeMillis(),
-                    estado = EstadoPlan.ACTIVO
-                )
-
-                // Usar el repository existente
-                val planId = repository.crearPlanNutricional(planConActivacion)
-
-                if (planId != null) {
-                    _mensaje.value = "Plan nutricional creado exitosamente"
-                    onComplete(true)
-                } else {
-                    _mensaje.value = "Error al crear el plan nutricional"
-                    onComplete(false)
-                }
-
-            } catch (e: Exception) {
-                _mensaje.value = "Error al crear el plan: ${e.message}"
-                onComplete(false)
-            } finally {
-                _isLoading.value = false
-            }
-        }
-    }
+//    fun crearPlanNutricional(plan: PlanNutricional, onComplete: (Boolean) -> Unit) {
+//        viewModelScope.launch {
+//            try {
+//                _isLoading.value = true
+//
+//                // Activar el plan automáticamente
+//                val planConActivacion = plan.copy(
+//                    fechaActivacion = System.currentTimeMillis(),
+//                    estado = EstadoPlan.ACTIVO
+//                )
+//
+//                // Usar el repository existente
+//                val planId = repository.crearPlanNutricional(planConActivacion)
+//
+//                if (planId != null) {
+//                    _mensaje.value = "Plan nutricional creado exitosamente"
+//                    onComplete(true)
+//                } else {
+//                    _mensaje.value = "Error al crear el plan nutricional"
+//                    onComplete(false)
+//                }
+//
+//            } catch (e: Exception) {
+//                _mensaje.value = "Error al crear el plan: ${e.message}"
+//                onComplete(false)
+//            } finally {
+//                _isLoading.value = false
+//            }
+//        }
+//    }
 
     fun crearPlanEntrenamiento(
         solicitudId: String,
@@ -322,7 +291,7 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    // ✅ NUEVO: Metodo para completar solicitud (usado por la nueva pantalla de categorías)
+    //Metodo para completar solicitud (usado por la nueva pantalla de categorías)
     fun completarSolicitud(solicitudId: String) {
         viewModelScope.launch {
             try {
@@ -354,9 +323,8 @@ class PlanesViewModel : ViewModel() {
         }
     }
 
-    /**
-     * Limpia el mensaje actual
-     */
+     //Limpia el mensaje actual
+
     fun limpiarMensaje() {
         _mensaje.value = null
     }

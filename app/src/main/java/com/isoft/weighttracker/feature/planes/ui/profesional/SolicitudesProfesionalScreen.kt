@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.profesional
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn

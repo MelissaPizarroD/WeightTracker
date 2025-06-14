@@ -1,8 +1,7 @@
-package com.isoft.weighttracker.feature.reporteAvance.ui
+package com.isoft.weighttracker.feature.reporteAvance.ui.persona
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Analytics
@@ -16,8 +15,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.TipoReporte
-import com.isoft.weighttracker.feature.reporteAvance.ui.components.*
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.components.GraficaBarrasActividad
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.components.GraficaCircularProgreso
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.components.GraficaComparativaReportes
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.components.GraficaDistribucionTipos
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.components.GraficaEvolucionPeso
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -319,7 +323,7 @@ fun GraficasAnaliticasScreen(
 
 @Composable
 private fun ResumenEjecutivo(
-    reportes: List<com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance>,
+    reportes: List<ReporteAvance>,
     modifier: Modifier = Modifier
 ) {
     val totalCalorias = reportes.sumOf { it.caloriasQuemadas }
@@ -376,7 +380,7 @@ private fun ResumenEjecutivo(
 
 @Composable
 private fun AnalisisTendencias(
-    reportes: List<com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance>,
+    reportes: List<ReporteAvance>,
     modifier: Modifier = Modifier
 ) {
     val tendenciasCalorias = calcularTendencia(reportes.map { it.caloriasQuemadas.toDouble() })

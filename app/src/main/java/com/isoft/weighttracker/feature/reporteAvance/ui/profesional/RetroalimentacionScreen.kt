@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.profesional.retroalimentacion
+package com.isoft.weighttracker.feature.reporteAvance.ui.profesional
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -17,8 +17,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
+import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
+import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.Retroalimentacion
-import com.isoft.weighttracker.feature.reporteAvance.ui.DatoAntropometrico
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.DatoAntropometrico
 import com.isoft.weighttracker.shared.UserViewModel
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -30,7 +32,7 @@ fun RetroalimentacionScreen(
     navController: NavController,
     reporteId: String,
     usuarioId: String,
-    profesionalViewModel: com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel = viewModel(),
+    profesionalViewModel: ProfesionalViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel() // ✅ AGREGADO: Para obtener datos del profesional
 ) {
     val context = LocalContext.current
@@ -236,7 +238,7 @@ fun RetroalimentacionScreen(
 
 @Composable
 private fun DetalleReporteParaProfesional(
-    reporte: com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
+    reporte: ReporteAvance
 ) {
     val sdf = remember { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()) }
     val fechaInicio = sdf.format(Date(reporte.fechaInicio))

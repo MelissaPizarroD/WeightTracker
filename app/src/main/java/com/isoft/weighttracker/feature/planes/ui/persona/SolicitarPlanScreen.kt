@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.persona
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -17,12 +17,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.feature.planes.model.EstadoSolicitud
 import com.isoft.weighttracker.feature.planes.model.TipoPlan
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
 import com.isoft.weighttracker.feature.asociar.viewmodel.AsociarProfesionalViewModel
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import com.isoft.weighttracker.shared.UserViewModel
+import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -1020,10 +1022,10 @@ fun SolicitarPlanScreen(
                             descripcion = descripcion,
                             // USAR FIREBASE AUTH COMO RESPALDO
                             nombreUsuario = currentUser?.name?.takeIf { it.isNotBlank() }
-                                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.displayName
+                                ?: FirebaseAuth.getInstance().currentUser?.displayName
                                 ?: "Usuario",
                             emailUsuario = currentUser?.email?.takeIf { it.isNotBlank() }
-                                ?: com.google.firebase.auth.FirebaseAuth.getInstance().currentUser?.email
+                                ?: FirebaseAuth.getInstance().currentUser?.email
                                 ?: "email@example.com",
                             // PARÁMETROS DE NUTRICIÓN
                             objetivoNutricion = if (esNutricion) objetivoNutricionSeleccionado else "",
@@ -1104,7 +1106,7 @@ fun SolicitarPlanScreen(
     LaunchedEffect(Unit) {
         // Cargar usuario PRIMERO y esperar un poco
         userViewModel.loadUser()
-        kotlinx.coroutines.delay(500) // Dar tiempo a que se cargue
+        delay(500) // Dar tiempo a que se cargue
 
         // Luego cargar lo demás
         planesViewModel.cargarSolicitudesUsuario()

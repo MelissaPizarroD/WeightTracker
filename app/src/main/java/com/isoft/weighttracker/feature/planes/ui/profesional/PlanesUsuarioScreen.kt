@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.profesional
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -14,7 +14,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.isoft.weighttracker.feature.planes.viewmodel.PlanesViewModel
-import com.isoft.weighttracker.feature.planes.model.PlanEntrenamiento
 import java.text.SimpleDateFormat
 import java.util.*
 

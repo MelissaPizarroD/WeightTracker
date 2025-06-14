@@ -33,23 +33,21 @@ import com.isoft.weighttracker.feature.metas.ui.HistorialMetasScreen
 import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
 import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
-import com.isoft.weighttracker.feature.planes.ui.CrearPlanEntrenamientoScreen
-import com.isoft.weighttracker.feature.planes.ui.CrearPlanNutricionalScreen
-import com.isoft.weighttracker.feature.planes.ui.MisPlanesScreen
-import com.isoft.weighttracker.feature.planes.ui.PlanesCreadosUsuariosScreen
-import com.isoft.weighttracker.feature.planes.ui.PlanesUsuarioScreen
-import com.isoft.weighttracker.feature.planes.ui.SolicitarPlanScreen
-import com.isoft.weighttracker.feature.planes.ui.SolicitudesProfesionalScreen
-import com.isoft.weighttracker.feature.planes.ui.VerPlanEntrenamientoScreen
-import com.isoft.weighttracker.feature.planes.ui.VerPlanNutricionalScreen
+import com.isoft.weighttracker.feature.planes.ui.profesional.CrearPlanEntrenamientoScreen
+import com.isoft.weighttracker.feature.planes.ui.persona.MisPlanesScreen
+import com.isoft.weighttracker.feature.planes.ui.profesional.PlanesCreadosUsuariosScreen
+import com.isoft.weighttracker.feature.planes.ui.profesional.PlanesUsuarioScreen
+import com.isoft.weighttracker.feature.planes.ui.persona.SolicitarPlanScreen
+import com.isoft.weighttracker.feature.planes.ui.profesional.SolicitudesProfesionalScreen
+import com.isoft.weighttracker.feature.planes.ui.persona.VerPlanEntrenamientoScreen
 import com.isoft.weighttracker.feature.profesional.datosProf.ui.DatosProfesionalScreen
-import com.isoft.weighttracker.feature.profesional.reportes.ReportesScreen
-import com.isoft.weighttracker.feature.profesional.retroalimentacion.RetroalimentacionScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.profesional.ReportesScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.profesional.RetroalimentacionScreen
 import com.isoft.weighttracker.feature.profesional.ui.ProfesionalHomeScreen
-import com.isoft.weighttracker.feature.reporteAvance.ui.DetalleReporteScreen
-import com.isoft.weighttracker.feature.reporteAvance.ui.GraficasAnaliticasScreen
-import com.isoft.weighttracker.feature.reporteAvance.ui.HistorialReportesScreen
-import com.isoft.weighttracker.feature.reporteAvance.ui.RegistrarReporteScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.DetalleReporteScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.GraficasAnaliticasScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.HistorialReportesScreen
+import com.isoft.weighttracker.feature.reporteAvance.ui.persona.RegistrarReporteScreen
 import com.isoft.weighttracker.feature.selectRole.ui.SelectRoleScreen
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -244,27 +242,6 @@ fun AppNavigation(
         composable("solicitudesPlanes/{role}") { backStackEntry ->
             val role = backStackEntry.arguments?.getString("role") ?: ""
             SolicitudesProfesionalScreen(navController, role)
-        }
-
-        composable(
-            "crearPlanNutricional/{solicitudJson}",
-            arguments = listOf(navArgument("solicitudJson") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val solicitudJson = backStackEntry.arguments?.getString("solicitudJson") ?: ""
-            val decoded = URLDecoder.decode(solicitudJson, StandardCharsets.UTF_8.toString())
-            val solicitud = Gson().fromJson(decoded, SolicitudPlan::class.java)
-            CrearPlanNutricionalScreen(navController, solicitud)
-        }
-
-        composable(
-            "verPlanNutricional/{planId}",
-            arguments = listOf(navArgument("planId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val planId = backStackEntry.arguments?.getString("planId") ?: ""
-            VerPlanNutricionalScreen(
-                navController = navController,
-                planId = planId
-            )
         }
 
         composable(

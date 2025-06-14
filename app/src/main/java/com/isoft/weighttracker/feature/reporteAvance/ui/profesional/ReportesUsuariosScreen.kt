@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.profesional.reportes
+package com.isoft.weighttracker.feature.reporteAvance.ui.profesional
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -8,7 +8,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,8 +19,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.model.User
+import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
 import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
-import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
 import com.isoft.weighttracker.shared.UserViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -32,7 +31,7 @@ fun ReportesUsuarioScreen(
     navController: NavController,
     usuario: User,
     onBack: () -> Unit,
-    profesionalViewModel: com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel = viewModel(),
+    profesionalViewModel: ProfesionalViewModel = viewModel(),
     userViewModel: UserViewModel = viewModel()
 ) {
     val reportes by profesionalViewModel.reportesUsuario.collectAsState()

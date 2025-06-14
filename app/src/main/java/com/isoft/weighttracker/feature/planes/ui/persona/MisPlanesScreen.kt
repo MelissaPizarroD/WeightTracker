@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.planes.ui
+package com.isoft.weighttracker.feature.planes.ui.persona
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*

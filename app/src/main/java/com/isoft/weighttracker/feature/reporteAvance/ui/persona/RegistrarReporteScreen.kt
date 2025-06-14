@@ -1,4 +1,4 @@
-package com.isoft.weighttracker.feature.reporteAvance.ui
+package com.isoft.weighttracker.feature.reporteAvance.ui.persona
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
@@ -21,6 +21,7 @@ import com.isoft.weighttracker.feature.reporteAvance.model.ReporteAvance
 import com.isoft.weighttracker.feature.reporteAvance.model.TipoReporte
 import com.isoft.weighttracker.feature.reporteAvance.viewmodel.ReporteAvanceViewModel
 import com.isoft.weighttracker.shared.UserViewModel // ✅ NUEVO: Import del UserViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -83,7 +84,7 @@ fun RegistrarReporteScreen(
                 metasVM.cargarMetaActiva()
 
                 // ✅ CRUCIAL: Pequeña pausa para asegurar que la meta se cargue antes del progreso
-                kotlinx.coroutines.delay(1000) // Aumentamos el delay
+                delay(1000) // Aumentamos el delay
 
                 println("📥 Verificando meta activa cargada...")
                 val metaVerificacion = metaActiva
@@ -96,7 +97,7 @@ fun RegistrarReporteScreen(
                 metasVM.cargarProgreso()
 
                 // ✅ NUEVA: Pequeña pausa final para asegurar que todos los datos estén disponibles
-                kotlinx.coroutines.delay(500)
+                delay(500)
 
                 println("📥 Verificando progreso cargado...")
                 val progresoVerificacion = progreso
