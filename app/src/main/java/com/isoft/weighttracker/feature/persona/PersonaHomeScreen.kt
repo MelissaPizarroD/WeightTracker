@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -235,8 +236,15 @@ fun PersonaHomeScreen(
                 NavigationDrawerItem(
                     label = {
                         Text(
-                            "🚪 Cerrar sesión",
+                            "Cerrar sesión",
                             color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            Icons.Default.Logout,
+                            contentDescription = "Cerrar sesión",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     },
                     selected = false,

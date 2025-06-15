@@ -1,9 +1,12 @@
 package com.isoft.weighttracker.feature.profesional.ui
 
 import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -11,14 +14,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.rememberAsyncImagePainter
+import coil.request.ImageRequest
 import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.core.model.User
 import com.isoft.weighttracker.feature.profesional.viewmodel.ProfesionalViewModel
@@ -73,8 +81,114 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet {
-                Text("Menú", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(16.dp))
-                Divider()
+                // ✅ NUEVA SECCIÓN: Header del perfil con foto, nombre y email
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Foto de perfil
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.primary)
+                        ) {
+                            val userPhotoUrl = currentUser?.photoUrl
+                            if (userPhotoUrl != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(
+                                        ImageRequest.Builder(context)
+                                            .data(userPhotoUrl)
+                                            .crossfade(true)
+                                            .build()
+                                    ),
+                                    contentDescription = "Foto de perfil",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    Icons.Default.Person,
+                                    contentDescription = "Avatar por defecto",
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(12.dp),
+                                    tint = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.width(12.dp))
+
+                        // Información del usuario
+                        Column(
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            val userName = currentUser?.name ?: "Usuario"
+                            val userEmail = currentUser?.email ?: ""
+
+                            Text(
+                                text = userName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = userEmail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            // Badge del rol
+                            Surface(
+                                modifier = Modifier.padding(top = 4.dp),
+                                shape = MaterialTheme.shapes.small,
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            ) {
+                                val roleEmoji = when(role) {
+                                    "entrenador" -> "💪"
+                                    "nutricionista" -> "🥗"
+                                    else -> "👨‍⚕️"
+                                }
+                                val roleText = when(role) {
+                                    "entrenador" -> "Entrenador"
+                                    "nutricionista" -> "Nutricionista"
+                                    else -> "Profesional"
+                                }
+                                Text(
+                                    text = "$roleEmoji $roleText",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                Text(
+                    text = "Menú",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+
+                // Menú principal
                 menuItems.forEach { (label, route) ->
                     NavigationDrawerItem(
                         label = { Text(label) },
@@ -86,13 +200,32 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )
                 }
+
+                // Espaciado y botón separado para cerrar sesión
                 Spacer(modifier = Modifier.weight(1f))
-                Divider()
+                Divider(modifier = Modifier.padding(horizontal = 16.dp))
                 NavigationDrawerItem(
-                    label = { Text("Cerrar sesión") },
+                    label = {
+                        Text(
+                            "Cerrar sesión",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    },
+                    icon = {
+                        Icon(
+                            Icons.Default.Logout,
+                            contentDescription = "Cerrar sesión",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    },
                     selected = false,
-                    onClick = { showLogoutDialog = true },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    onClick = {
+                        scope.launch { drawerState.close() }
+                        showLogoutDialog = true
+                    },
+                    modifier = Modifier
+                        .padding(NavigationDrawerItemDefaults.ItemPadding)
+                        .padding(bottom = 16.dp)
                 )
             }
         }
@@ -128,13 +261,27 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         .fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(48.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            "Cargando perfil...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             } else if (mostrarAviso) {
                 LaunchedEffect(Unit) {
                     kotlinx.coroutines.delay(3000)
                     navController.navigate("datosProfesional")
                 }
+
                 Box(
                     modifier = Modifier
                         .padding(innerPadding)
@@ -144,22 +291,46 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                 ) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
                     ) {
                         Column(
-                            modifier = Modifier.padding(24.dp),
+                            modifier = Modifier
+                                .padding(24.dp)
+                                .fillMaxWidth(),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text("👨‍⚕️", style = MaterialTheme.typography.displaySmall)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text("¡Completa tu perfil profesional!", style = MaterialTheme.typography.headlineSmall)
-                            Text(
-                                "Para comenzar a trabajar con usuarios necesitas completar tus datos.",
-                                textAlign = TextAlign.Center,
-                                style = MaterialTheme.typography.bodyMedium
+                            Icon(
+                                Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(48.dp)
                             )
                             Spacer(modifier = Modifier.height(16.dp))
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            Text(
+                                "¡Completa tu perfil profesional!",
+                                style = MaterialTheme.typography.headlineSmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                "Para usar todas las funciones necesitas completar tu perfil profesional primero",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                textAlign = TextAlign.Center
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                "Te redirigiremos en un momento...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            LinearProgressIndicator(
+                                modifier = Modifier.fillMaxWidth(),
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
                 }
@@ -169,13 +340,13 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         .padding(innerPadding)
                         .fillMaxSize()
                         .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                    contentPadding = PaddingValues(bottom = 100.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
                         ) {
                             Column(modifier = Modifier.padding(20.dp)) {
                                 Text(
@@ -232,29 +403,6 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                         }
                     }
 
-                    item {
-                        Card(
-                            onClick = { navController.navigate("reporteAvance/$role") },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                Text("📈", style = MaterialTheme.typography.headlineLarge)
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text("Reportes de Avance", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                                    Text("Visualizá el progreso de tus usuarios", style = MaterialTheme.typography.bodySmall)
-                                }
-                                Icon(Icons.Default.ArrowForward, contentDescription = null)
-                            }
-                        }
-                    }
-
                     if (role != "nutricionista") {
                         item {
                             Card(
@@ -278,7 +426,7 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                                         )
                                         Text(
                                             "Revisa y crea planes para tus usuarios",
-                                            style = MaterialTheme.typography.bodySmall
+                                            style = MaterialTheme.typography.bodyMedium
                                         )
                                     }
                                     Icon(Icons.Default.ArrowForward, contentDescription = null)
@@ -288,9 +436,39 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                     }
 
                     item {
+                        Card(
+                            onClick = { navController.navigate("reporteAvance/$role") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Text("📊", style = MaterialTheme.typography.headlineLarge)
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        "Reportes de Avance",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Ve el progreso de tus usuarios",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                                Icon(Icons.Default.ArrowForward, contentDescription = null)
+                            }
+                        }
+                    }
+
+                    item {
                         Text(
-                            "Usuarios Asociados (${usuarios.size})",
-                            style = MaterialTheme.typography.titleMedium,
+                            "👥 Usuarios Asociados",
+                            style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -302,13 +480,23 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                             ) {
                                 Column(
-                                    modifier = Modifier.padding(32.dp),
+                                    modifier = Modifier
+                                        .padding(24.dp)
+                                        .fillMaxWidth(),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("No tienes usuarios asociados", style = MaterialTheme.typography.titleMedium)
-                                    Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Aquí aparecerán cuando se asocien contigo",
+                                        "🤝",
+                                        style = MaterialTheme.typography.displaySmall
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        "Aún no tienes usuarios asociados",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        "Los usuarios aparecerán cuando se asocien contigo",
                                         style = MaterialTheme.typography.bodyMedium
                                     )
                                 }
