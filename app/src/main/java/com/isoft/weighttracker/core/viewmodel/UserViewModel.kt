@@ -36,6 +36,9 @@ class UserViewModel : ViewModel() {
     private val _profesionalProfile = MutableStateFlow<ProfesionalProfile?>(null)
     val profesionalProfile: StateFlow<ProfesionalProfile?> = _profesionalProfile
 
+    private val _yaCargoPerfil = MutableStateFlow(false)
+    val yaCargoPerfil: StateFlow<Boolean> = _yaCargoPerfil
+
     // ✅ ACTUALIZADO - Removida referencia a base.profesionales
     fun loadUser() {
         viewModelScope.launch {
@@ -62,6 +65,7 @@ class UserViewModel : ViewModel() {
             val profile = userRepo.getPersonaProfile()
             if (profile != null) {
                 _personaProfile.value = profile
+                _yaCargoPerfil.value = true
             }
         }
     }

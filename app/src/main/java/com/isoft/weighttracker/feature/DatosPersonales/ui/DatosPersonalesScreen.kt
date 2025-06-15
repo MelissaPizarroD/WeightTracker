@@ -17,7 +17,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.isoft.weighttracker.core.model.PersonaProfile
 import com.isoft.weighttracker.shared.UserViewModel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import kotlinx.coroutines.launch
+
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,12 +55,36 @@ fun DatosPersonalesScreen(
         }
     }
 
+    // ✅ VALIDACIONES EN TIEMPO REAL
     val edadInt = edad.toIntOrNull()
     val estaturaFloat = estatura.toFloatOrNull()
-    val isFormValid = edadInt != null && edadInt in 18..120 &&
-            sexo.lowercase() in listOf("masculino", "femenino") &&
-            estaturaFloat != null && estaturaFloat in 50f..250f &&
-            antecedentes.isNotBlank()
+
+    // Validaciones individuales con mensajes específicos
+    val edadEsValida = edadInt != null && edadInt in 18..120
+    val edadMensaje = when {
+        edad.isBlank() -> null
+        edadInt == null -> "Ingresa solo números"
+        edadInt < 18 -> "La edad mínima es 18 años"
+        edadInt > 120 -> "La edad máxima es 120 años"
+        else -> null
+    }
+
+    val sexoEsValido = sexo.lowercase() in listOf("masculino", "femenino")
+    val sexoMensaje = if (sexo.isNotBlank() && !sexoEsValido) "Selecciona una opción válida" else null
+
+    val estaturaEsValida = estaturaFloat != null && estaturaFloat in 50f..250f
+    val estaturaMensaje = when {
+        estatura.isBlank() -> null
+        estaturaFloat == null -> "Ingresa solo números (ej: 170.5)"
+        estaturaFloat < 50f -> "La estatura mínima es 50 cm"
+        estaturaFloat > 250f -> "La estatura máxima es 250 cm"
+        else -> null
+    }
+
+    val antecedentesEsValido = antecedentes.isNotBlank()
+    val antecedentesMensaje = if (antecedentes.isBlank() && showErrors) "Este campo es obligatorio" else null
+
+    val isFormValid = edadEsValida && sexoEsValido && estaturaEsValida && antecedentesEsValido
 
     Scaffold(
         topBar = {
@@ -82,20 +110,55 @@ fun DatosPersonalesScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ✅ CAMPO EDAD CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = edad,
-                onValueChange = { edad = it.filter { c -> c.isDigit() } },
+                onValueChange = { newValue ->
+                    // Solo permitir números y máximo 3 dígitos
+                    val filtered = newValue.filter { it.isDigit() }.take(3)
+                    edad = filtered
+                },
                 label = { Text("Edad") },
+                placeholder = { Text("Ej: 25") },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = modoEdicion,
-                isError = showErrors && (edadInt == null || edadInt !in 18..120),
+                isError = edadMensaje != null,
                 supportingText = {
-                    if (showErrors && (edadInt == null || edadInt !in 18..120))
-                        Text("Edad válida entre 18 y 120")
+                    edadMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (edad.isNotBlank() && edadEsValida) {
+                            Text(
+                                text = "✓ Edad válida",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (edad.isNotBlank()) {
+                        if (edadEsValida) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (edadMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
 
+            // ✅ CAMPO SEXO CON VALIDACIÓN
             Text(
                 "Sexo",
                 style = MaterialTheme.typography.titleSmall,
@@ -123,11 +186,12 @@ fun DatosPersonalesScreen(
                     }
                 }
 
-                if (showErrors && sexo.lowercase() !in listOf("masculino", "femenino")) {
+                sexoMensaje?.let {
                     Text(
-                        text = "Selecciona una opción",
+                        text = it,
                         color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(start = 16.dp)
                     )
                 }
             } else {
@@ -138,78 +202,198 @@ fun DatosPersonalesScreen(
                 )
             }
 
+            // ✅ CAMPO ESTATURA CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = estatura,
-                onValueChange = { estatura = it.filter { c -> c.isDigit() || c == '.' } },
+                onValueChange = { newValue ->
+                    // Permitir números y un solo punto decimal
+                    val filtered = newValue.filter { it.isDigit() || it == '.' }
+                        .let { value ->
+                            // Evitar múltiples puntos
+                            val dotCount = value.count { it == '.' }
+                            if (dotCount <= 1) value else value.dropLast(1)
+                        }
+                        .take(6) // Máximo 6 caracteres (ej: 250.50)
+                    estatura = filtered
+                },
                 label = { Text("Estatura (cm)") },
-                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
+                placeholder = { Text("Ej: 170.5") },
+                keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Decimal),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = modoEdicion,
-                isError = showErrors && (estaturaFloat == null || estaturaFloat !in 50f..250f),
+                isError = estaturaMensaje != null,
                 supportingText = {
-                    if (showErrors && (estaturaFloat == null || estaturaFloat !in 50f..250f))
-                        Text("Debe estar entre 50 y 250 cm")
+                    estaturaMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (estatura.isNotBlank() && estaturaEsValida) {
+                            Text(
+                                text = "✓ Estatura válida",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (estatura.isNotBlank()) {
+                        if (estaturaEsValida) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (estaturaMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
 
+            // ✅ CAMPO ANTECEDENTES CON VALIDACIÓN
             OutlinedTextField(
                 value = antecedentes,
                 onValueChange = { antecedentes = it },
                 label = { Text("Antecedentes médicos") },
+                placeholder = { Text("Describe cualquier condición médica relevante o escribe 'Ninguno'") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 100.dp),
                 enabled = modoEdicion,
                 maxLines = 5,
-                isError = showErrors && antecedentes.isBlank(),
+                isError = antecedentesMensaje != null,
                 supportingText = {
-                    if (showErrors && antecedentes.isBlank())
-                        Text("No puede estar vacío")
+                    antecedentesMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        Text(
+                            text = "${antecedentes.length}/500 caracteres",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             )
 
             Spacer(modifier = Modifier.weight(1f))
 
+            // ✅ INDICADOR DE PROGRESO DEL FORMULARIO
             if (modoEdicion) {
-                Button(
-                    onClick = {
-                        if (!isFormValid) {
-                            showErrors = true
-                            return@Button
+                val camposCompletos = listOf(edadEsValida, sexoEsValido, estaturaEsValida, antecedentesEsValido).count { it }
+                val totalCampos = 4
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Progreso del formulario",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "$camposCompletos/$totalCampos",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
 
-                        isSaving = true
-                        scope.launch {
-                            val nuevoPerfil = PersonaProfile(
-                                edad = edadInt!!,
-                                sexo = sexo.trim().lowercase(),
-                                estatura = estaturaFloat!!,
-                                antecedentesMedicos = antecedentes.trim()
-                            )
-                            userViewModel.updatePersonaProfile(nuevoPerfil) {
-                                userViewModel.loadPersonaProfile()
-                                Toast.makeText(context, "Datos guardados correctamente", Toast.LENGTH_SHORT).show()
-                                isSaving = false
-                                modoEdicion = false
-                                navController.popBackStack()
-                            }
-                        }
-                    },
-                    enabled = isFormValid && !isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            strokeWidth = 2.dp
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            progress = camposCompletos.toFloat() / totalCampos,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary
                         )
-                        Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(
-                        text = if (isSaving) "Guardando..." else "Guardar cambios",
-                        style = MaterialTheme.typography.labelLarge
-                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (modoEdicion) {
+                // ✅ ROW CON BOTONES CANCELAR Y GUARDAR
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            // Restaurar valores originales si existe un perfil previo
+                            personaProfile?.let {
+                                edad = it.edad.toString()
+                                sexo = it.sexo
+                                estatura = it.estatura.toString()
+                                antecedentes = it.antecedentesMedicos
+                                modoEdicion = false
+                                showErrors = false
+                            } ?: run {
+                                // Si no hay perfil previo, volver a la pantalla anterior
+                                navController.navigateUp()
+                            }
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text("Cancelar")
+                    }
+
+                    Button(
+                        onClick = {
+                            if (!isFormValid) {
+                                showErrors = true
+                                Toast.makeText(context, "Por favor corrige los errores antes de continuar", Toast.LENGTH_LONG).show()
+                                return@Button
+                            }
+
+                            isSaving = true
+                            scope.launch {
+                                val nuevoPerfil = PersonaProfile(
+                                    edad = edadInt!!,
+                                    sexo = sexo.trim().lowercase(),
+                                    estatura = estaturaFloat!!,
+                                    antecedentesMedicos = antecedentes.trim()
+                                )
+                                userViewModel.updatePersonaProfile(nuevoPerfil) {
+                                    userViewModel.loadPersonaProfile()
+                                    Toast.makeText(context, "Datos guardados correctamente", Toast.LENGTH_SHORT).show()
+                                    isSaving = false
+                                    modoEdicion = false
+                                    navController.popBackStack()
+                                }
+                            }
+                        },
+                        enabled = isFormValid && !isSaving,
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(
+                            text = if (isSaving) "Guardando..." else "Guardar cambios",
+                            style = MaterialTheme.typography.labelLarge
+                        )
+                    }
                 }
             } else {
                 OutlinedButton(

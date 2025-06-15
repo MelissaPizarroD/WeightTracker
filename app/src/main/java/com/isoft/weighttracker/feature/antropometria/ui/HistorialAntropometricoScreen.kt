@@ -48,6 +48,10 @@ fun HistorialAntropometricoScreen(
     val persona = personaState.value
 
     val registros by antropometriaViewModel.registros.collectAsState()
+    //para pantalla de carga
+    val isLoading by antropometriaViewModel.isLoading.collectAsState()
+    val yaCargoPerfil by userViewModel.yaCargoPerfil.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     var registroAEliminar by remember { mutableStateOf<Antropometria?>(null) }
@@ -143,18 +147,25 @@ fun HistorialAntropometricoScreen(
 
     //AQUI HICE CAMBIO
     // Verificar si el PersonaProfile existe en Firestore
-    if (persona == null) {
-        var mostrandoMensaje by remember { mutableStateOf(true) }
 
-        // Redirigir después de mostrar el mensaje por unos segundos
+    if (persona == null && !yaCargoPerfil) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (persona == null) {
         LaunchedEffect(Unit) {
-            kotlinx.coroutines.delay(5000) // Esperar 2.5 segundos 2500
+            kotlinx.coroutines.delay(5000)
             navController.navigate("datosPersonales") {
                 popUpTo("historialAntropometrico") { inclusive = true }
             }
         }
 
-        // Mostrar mensaje explicativo
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -262,6 +273,16 @@ fun HistorialAntropometricoScreen(
         return
     }
     //TERMINA EL CAMBIO
+
+    if (isLoading && registros.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
 
     Scaffold(
         topBar = {

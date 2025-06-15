@@ -22,6 +22,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.isoft.weighttracker.core.model.ProfesionalProfile
 import com.isoft.weighttracker.shared.UserViewModel
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Error
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,10 +61,37 @@ fun DatosProfesionalScreen(
         }
     }
 
-    val isFormValid = especialidad.isNotBlank() &&
-            estudios.isNotBlank() &&
-            cedula.isNotBlank() &&
-            experiencia.isNotBlank()
+    // ✅ VALIDACIONES EN TIEMPO REAL
+    val especialidadEsValida = especialidad.trim().length >= 3
+    val especialidadMensaje = when {
+        especialidad.isBlank() -> null
+        especialidad.trim().length < 3 -> "Mínimo 3 caracteres"
+        else -> null
+    }
+
+    val estudiosEsValido = estudios.trim().length >= 10
+    val estudiosMensaje = when {
+        estudios.isBlank() -> null
+        estudios.trim().length < 10 -> "Describe con más detalle (mín. 10 caracteres)"
+        else -> null
+    }
+
+    val cedulaEsValida = cedula.length >= 6 && cedula.all { it.isDigit() }
+    val cedulaMensaje = when {
+        cedula.isBlank() -> null
+        cedula.length < 6 -> "Mínimo 6 dígitos"
+        !cedula.all { it.isDigit() } -> "Solo números permitidos"
+        else -> null
+    }
+
+    val experienciaEsValida = experiencia.trim().length >= 20
+    val experienciaMensaje = when {
+        experiencia.isBlank() -> null
+        experiencia.trim().length < 20 -> "Describe con más detalle tu experiencia (mín. 20 caracteres)"
+        else -> null
+    }
+
+    val isFormValid = especialidadEsValida && estudiosEsValido && cedulaEsValida && experienciaEsValida
 
     Scaffold(
         topBar = {
@@ -143,63 +172,293 @@ fun DatosProfesionalScreen(
                 }
             }
 
-            // Campos del formulario
+            // ✅ CAMPO ESPECIALIDAD CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = especialidad,
-                onValueChange = { especialidad = it },
+                onValueChange = { newValue ->
+                    // Limitar a 100 caracteres y filtrar caracteres especiales problemáticos
+                    especialidad = newValue.take(100).filter { it.isLetter() || it.isWhitespace() || it in ",.-" }
+                },
                 label = { Text("Especialidad") },
                 placeholder = { Text("Ej: Nutrición Deportiva, Entrenamiento Funcional") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = modoEdicion,
-                isError = showErrors && especialidad.isBlank(),
+                isError = especialidadMensaje != null,
                 supportingText = {
-                    if (showErrors && especialidad.isBlank())
-                        Text("Campo requerido")
+                    especialidadMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (especialidad.isNotBlank() && especialidadEsValida) {
+                            Text(
+                                text = "✓ Especialidad válida",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "${especialidad.length}/100 caracteres",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (especialidad.isNotBlank()) {
+                        if (especialidadEsValida) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (especialidadMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
 
+            // ✅ CAMPO ESTUDIOS CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = estudios,
-                onValueChange = { estudios = it },
+                onValueChange = { newValue ->
+                    estudios = newValue.take(200)
+                },
                 label = { Text("Estudios / Certificaciones") },
-                placeholder = { Text("Ej: Lic. en Nutrición, Cert. ACSM") },
+                placeholder = { Text("Ej: Licenciatura en Nutrición - Universidad XYZ, Certificación ACSM") },
                 modifier = Modifier.fillMaxWidth(),
                 enabled = modoEdicion,
-                isError = showErrors && estudios.isBlank(),
+                minLines = 2,
+                maxLines = 4,
+                isError = estudiosMensaje != null,
                 supportingText = {
-                    if (showErrors && estudios.isBlank())
-                        Text("Campo requerido")
+                    estudiosMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (estudios.isNotBlank() && estudiosEsValido) {
+                            Text(
+                                text = "✓ Información completa",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "${estudios.length}/200 caracteres",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (estudios.isNotBlank()) {
+                        if (estudiosEsValido) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (estudiosMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
 
+            // ✅ CAMPO CÉDULA CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = cedula,
-                onValueChange = { cedula = it.filter { c -> c.isDigit() } },
+                onValueChange = { newValue ->
+                    // Solo números, máximo 15 dígitos
+                    cedula = newValue.filter { it.isDigit() }.take(15)
+                },
                 label = { Text("Cédula Profesional") },
+                placeholder = { Text("Ej: 12345678") },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Number),
                 modifier = Modifier.fillMaxWidth(),
                 enabled = modoEdicion,
-                isError = showErrors && cedula.isBlank(),
+                isError = cedulaMensaje != null,
                 supportingText = {
-                    if (showErrors && cedula.isBlank())
-                        Text("Campo requerido")
+                    cedulaMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (cedula.isNotBlank() && cedulaEsValida) {
+                            Text(
+                                text = "✓ Cédula válida",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "${cedula.length}/15 dígitos",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (cedula.isNotBlank()) {
+                        if (cedulaEsValida) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (cedulaMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
 
+            // ✅ CAMPO EXPERIENCIA CON VALIDACIÓN MEJORADA
             OutlinedTextField(
                 value = experiencia,
-                onValueChange = { experiencia = it },
-                label = { Text("Experiencia") },
-                placeholder = { Text("Ej: 5 años en nutrición clínica y deportiva") },
+                onValueChange = { newValue ->
+                    experiencia = newValue.take(500)
+                },
+                label = { Text("Experiencia Profesional") },
+                placeholder = { Text("Ej: 5 años trabajando en nutrición clínica y deportiva. He atendido más de 200 pacientes...") },
                 modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
+                minLines = 3,
+                maxLines = 6,
                 enabled = modoEdicion,
-                isError = showErrors && experiencia.isBlank(),
+                isError = experienciaMensaje != null,
                 supportingText = {
-                    if (showErrors && experiencia.isBlank())
-                        Text("Campo requerido")
+                    experienciaMensaje?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    } ?: run {
+                        if (experiencia.isNotBlank() && experienciaEsValida) {
+                            Text(
+                                text = "✓ Experiencia bien detallada",
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            Text(
+                                text = "${experiencia.length}/500 caracteres",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                },
+                trailingIcon = {
+                    if (experiencia.isNotBlank()) {
+                        if (experienciaEsValida) {
+                            Icon(
+                                Icons.Default.CheckCircle,
+                                contentDescription = "Válido",
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else if (experienciaMensaje != null) {
+                            Icon(
+                                Icons.Default.Error,
+                                contentDescription = "Error",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                 }
             )
+
+            // ✅ INDICADOR DE PROGRESO DEL FORMULARIO
+            if (modoEdicion) {
+                val camposCompletos = listOf(especialidadEsValida, estudiosEsValido, cedulaEsValida, experienciaEsValida).count { it }
+                val totalCampos = 4
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                "Completitud del perfil",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                "$camposCompletos/$totalCampos",
+                                style = MaterialTheme.typography.titleSmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        LinearProgressIndicator(
+                            progress = camposCompletos.toFloat() / totalCampos,
+                            modifier = Modifier.fillMaxWidth(),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+
+                        if (camposCompletos < totalCampos) {
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "Completa todos los campos para crear tu perfil profesional",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            // ✅ TIPS PARA PROFESIONALES
+            if (modoEdicion && !isFormValid) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.3f)
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp)
+                    ) {
+                        Text(
+                            "💡 Tips para un perfil exitoso:",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            "• Sé específico en tu especialidad\n" +
+                                    "• Menciona certificaciones relevantes\n" +
+                                    "• Describe casos de éxito en tu experiencia\n" +
+                                    "• Usa términos técnicos apropiados",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -232,7 +491,7 @@ fun DatosProfesionalScreen(
                                         )
 
                                         userViewModel.updateProfesionalProfile(profile) {
-                                            Toast.makeText(context, "✅ Perfil guardado", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "✅ Perfil profesional guardado exitosamente", Toast.LENGTH_SHORT).show()
                                             navController.navigateUp()
                                         }
                                     } catch (e: Exception) {
@@ -243,19 +502,21 @@ fun DatosProfesionalScreen(
                                 }
                             } else {
                                 showErrors = true
+                                Toast.makeText(context, "Por favor completa correctamente todos los campos", Toast.LENGTH_LONG).show()
                             }
                         },
-                        enabled = !isSaving,
+                        enabled = isFormValid && !isSaving,
                         modifier = Modifier.weight(1f)
                     ) {
                         if (isSaving) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(16.dp),
-                                strokeWidth = 2.dp
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
                             )
-                        } else {
-                            Text("Guardar")
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
+                        Text(if (isSaving) "Guardando..." else "Guardar Perfil")
                     }
                 }
             } else {
@@ -264,7 +525,7 @@ fun DatosProfesionalScreen(
                     onClick = { modoEdicion = true },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Editar perfil")
+                    Text("Editar perfil profesional")
                 }
             }
         }

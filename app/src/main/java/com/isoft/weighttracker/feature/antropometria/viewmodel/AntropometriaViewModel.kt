@@ -21,6 +21,10 @@ class AntropometriaViewModel : ViewModel() {
     private val _alerta = MutableStateFlow<String?>(null)
     val alerta: StateFlow<String?> = _alerta
 
+    //para estados de la ui
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     fun clearAlerta() {
         _alerta.value = null
     }
@@ -37,8 +41,10 @@ class AntropometriaViewModel : ViewModel() {
 
     fun cargarRegistrosDeUsuario(usuarioId: String) {
         viewModelScope.launch {
+            _isLoading.value = true
             val data = repository.obtenerRegistrosDeUsuario(usuarioId)
             _registrosDeUsuario.value = data
+            _isLoading.value = false
         }
     }
 
