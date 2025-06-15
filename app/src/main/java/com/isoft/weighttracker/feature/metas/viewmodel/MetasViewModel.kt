@@ -138,6 +138,7 @@ class MetasViewModel : ViewModel() {
         }
     }
 
+
     private suspend fun calcularProgreso(meta: Meta) {
         val registros = antropometriaRepository.obtenerRegistros()
         val registrosFiltrados = registros.filter { it.fecha >= meta.fechaInicio }
@@ -157,9 +158,18 @@ class MetasViewModel : ViewModel() {
 
         val direccionCorrecta = pesoObjetivo - pesoInicial
 
+        // ✅ CORRECCIÓN: Siempre incluir el peso inicial en el cálculo del "peor peso"
         val peorPeso = when {
-            direccionCorrecta < 0 -> registrosFiltrados.maxOfOrNull { it.peso } ?: pesoInicial
-            direccionCorrecta > 0 -> registrosFiltrados.minOfOrNull { it.peso } ?: pesoInicial
+            direccionCorrecta < 0 -> {
+                // Para BAJAR de peso: el peor peso es el más ALTO registrado
+                val maxRegistros = registrosFiltrados.maxOfOrNull { it.peso } ?: pesoInicial
+                maxOf(maxRegistros, pesoInicial) // Asegurar que el peso inicial sea considerado
+            }
+            direccionCorrecta > 0 -> {
+                // Para SUBIR de peso: el peor peso es el más BAJO registrado
+                val minRegistros = registrosFiltrados.minOfOrNull { it.peso } ?: pesoInicial
+                minOf(minRegistros, pesoInicial) // Asegurar que el peso inicial sea considerado
+            }
             else -> pesoInicial
         }
 
