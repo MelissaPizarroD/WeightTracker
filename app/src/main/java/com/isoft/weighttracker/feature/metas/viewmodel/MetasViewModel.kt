@@ -40,6 +40,10 @@ class MetasViewModel : ViewModel() {
     private val _eventoMeta = MutableStateFlow<String?>(null)
     val eventoMeta: StateFlow<String?> = _eventoMeta.asStateFlow()
 
+    //Para pantalla de carga
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     fun clearEventoMeta() {
         _eventoMeta.value = null
     }
@@ -54,12 +58,14 @@ class MetasViewModel : ViewModel() {
 
     fun cargarMetas() {
         viewModelScope.launch {
+            _isLoading.value = true
             val metas = metasRepository.obtenerMetas()
             _metas.value = metas
             val metaActiva = metas.firstOrNull { it.activa && !it.cumplida }
             _metaActiva.value = metaActiva
             Log.d("MetasViewModel", "Meta activa: ${metaActiva?.id}")
             metaActiva?.let { calcularProgreso(it) }
+            _isLoading.value = false
         }
     }
 

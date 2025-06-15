@@ -44,6 +44,9 @@ fun HistorialMetasScreen(
     val alerta by metasViewModel.alerta.collectAsState()
     val eventoMeta by metasViewModel.eventoMeta.collectAsState()
 
+    //Para la pantalla de carga
+    val isLoading by metasViewModel.isLoading.collectAsState()
+
     var metaAEliminar by remember { mutableStateOf<Meta?>(null) }
     var mostrarMetaActiva by remember { mutableStateOf(true) }
     var mostrarHistorial by remember { mutableStateOf(true) }
@@ -89,6 +92,16 @@ fun HistorialMetasScreen(
                 metasViewModel.clearEventoMeta()
             }
         }
+    }
+
+    if (isLoading && metas.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
     }
 
     Scaffold(
