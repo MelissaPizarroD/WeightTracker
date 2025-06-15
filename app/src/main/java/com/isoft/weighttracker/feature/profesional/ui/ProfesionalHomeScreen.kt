@@ -408,7 +408,7 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                             Card(
                                 onClick = { navController.navigate("solicitudesPlanes/$role") },
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer)
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
                             ) {
                                 Row(
                                     modifier = Modifier

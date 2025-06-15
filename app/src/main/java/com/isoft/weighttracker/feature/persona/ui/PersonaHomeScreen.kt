@@ -450,7 +450,7 @@ fun PersonaHomeScreen(
                                     .weight(1f)
                                     .height(120.dp), // ← NUEVO: Altura fija
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
@@ -498,7 +498,7 @@ fun PersonaHomeScreen(
                                     .weight(1f)
                                     .height(120.dp), // ← NUEVO: Altura fija
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
@@ -540,7 +540,7 @@ fun PersonaHomeScreen(
                                     .weight(1f)
                                     .height(120.dp), // ← NUEVO: Altura fija
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
@@ -588,7 +588,7 @@ fun PersonaHomeScreen(
                                     .weight(1f)
                                     .height(120.dp), // ← NUEVO: Altura fija
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
@@ -606,7 +606,7 @@ fun PersonaHomeScreen(
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
                                     Text(
-                                        "Medidas",
+                                        "Antropometria",
                                         style = MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -630,7 +630,7 @@ fun PersonaHomeScreen(
                                     .weight(1f)
                                     .height(120.dp), // ← NUEVO: Altura fija
                                 colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer
                                 ),
                                 elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                             ) {
