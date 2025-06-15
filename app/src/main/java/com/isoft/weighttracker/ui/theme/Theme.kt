@@ -1,57 +1,88 @@
 package com.isoft.weighttracker.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
+import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
+private val LightColorScheme = lightColorScheme(
+    primary = GreenPrimary,
+    onPrimary = OnGreenPrimary,
+    primaryContainer = GreenPrimaryContainer,
+    onPrimaryContainer = OnGreenPrimaryContainer,
+
+    secondary = GreenSecondary,
+    onSecondary = OnGreenSecondary,
+    secondaryContainer = GreenSecondaryContainer,
+    onSecondaryContainer = OnGreenSecondaryContainer,
+
+    tertiary = BlueTertiary,
+    onTertiary = OnBlueTertiary,
+    tertiaryContainer = BlueTertiaryContainer,
+    onTertiaryContainer = OnBlueTertiaryContainer,
+
+    background = AppBackground,
+    onBackground = OnBackground,
+    surface = AppSurface,
+    onSurface = OnSurface,
+    surfaceVariant = SurfaceVariant,
+    onSurfaceVariant = OnSurfaceVariant,
+
+    error = AppError,
+    onError = OnError,
+    errorContainer = ErrorContainer,
+    onErrorContainer = OnErrorContainer
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
+private val DarkColorScheme = darkColorScheme(
+    primary = GreenPrimary,
+    onPrimary = OnGreenPrimary,
+    primaryContainer = Color(0xFF145C45),
+    onPrimaryContainer = GreenPrimaryContainer,
 
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
-    onPrimary = Color.White,
-    onSecondary = Color.White,
-    onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    secondary = GreenSecondary,
+    onSecondary = OnGreenSecondary,
+    secondaryContainer = Color(0xFF22564C),
+    onSecondaryContainer = GreenSecondaryContainer,
+
+    tertiary = BlueTertiary,
+    onTertiary = OnBlueTertiary,
+    tertiaryContainer = Color(0xFF0A3B4F),
+    onTertiaryContainer = BlueTertiaryContainer,
+
+    background = Color(0xFF0F1A15),
+    onBackground = Color(0xFFE1EDE7),
+    surface = Color(0xFF15201B),
+    onSurface = Color(0xFFE1EDE7),
+    surfaceVariant = Color(0xFF37453F),
+    onSurfaceVariant = OnSurfaceVariant,
+
+    error = AppError,
+    onError = OnError,
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = ErrorContainer
 )
 
 @Composable
 fun WeightTrackerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-      dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-        val context = LocalContext.current
-        if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-      }
-      darkTheme -> DarkColorScheme
-      else -> LightColorScheme
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
     }
 
     MaterialTheme(
-      colorScheme = colorScheme,
-      typography = Typography,
-      content = content
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
     )
 }
