@@ -208,6 +208,28 @@ fun SolicitarPlanScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            //Pantalla de carga
+            if (isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            CircularProgressIndicator()
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Text(
+                                text = "Cargando solicitudes...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
             // Formulario de solicitud
             if (mostrandoFormulario) {
                 item {
