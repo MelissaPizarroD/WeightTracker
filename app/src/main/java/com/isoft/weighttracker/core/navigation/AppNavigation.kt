@@ -32,7 +32,7 @@ import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModel
 import com.isoft.weighttracker.feature.login.viewmodel.LoginViewModelFactory
 import com.isoft.weighttracker.feature.metas.ui.HistorialMetasScreen
 import com.isoft.weighttracker.feature.metas.ui.RegistrarMetaScreen
-import com.isoft.weighttracker.feature.persona.PersonaHomeScreen
+import com.isoft.weighttracker.feature.persona.ui.PersonaHomeScreen
 import com.isoft.weighttracker.feature.planes.model.SolicitudPlan
 import com.isoft.weighttracker.feature.planes.ui.profesional.CrearPlanEntrenamientoScreen
 import com.isoft.weighttracker.feature.planes.ui.persona.MisPlanesScreen

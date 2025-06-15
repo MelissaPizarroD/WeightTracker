@@ -1,11 +1,10 @@
-package com.isoft.weighttracker.feature.persona
+package com.isoft.weighttracker.feature.persona.ui
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Logout
@@ -16,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -25,8 +23,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
-import com.google.firebase.auth.FirebaseAuth
 import com.isoft.weighttracker.shared.UserViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,14 +61,14 @@ fun PersonaHomeScreen(
     // Manejar estados después de cargar datos
     LaunchedEffect(persona) {
         if (cargandoDatos) {
-            kotlinx.coroutines.delay(1500)
+            delay(1500)
             cargandoDatos = false
             if (persona == null || !perfilCompleto) {
                 mostrandoAviso = true
             }
         } else {
             if (persona != null && perfilCompleto && mostrandoAviso) {
-                kotlinx.coroutines.delay(1000)
+                delay(1000)
                 mostrandoAviso = false
             }
         }
@@ -303,7 +301,7 @@ fun PersonaHomeScreen(
             } else if (mostrandoAviso) {
                 // Aviso para completar perfil
                 LaunchedEffect(Unit) {
-                    kotlinx.coroutines.delay(3000)
+                    delay(3000)
                     navController.navigate("datosPersonales")
                 }
 
