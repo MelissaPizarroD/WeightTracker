@@ -34,6 +34,9 @@ fun AsociarProfesionalScreen(
     val asociadosCompletos by viewModel.asociadosCompletos.collectAsState()
     val asociados = asociadosCompletos.mapValues { it.value.user } // Para compatibilidad
 
+    //Para pantalla de carga
+    val isLoading by viewModel.isLoading.collectAsState()
+
     val estado by viewModel.estado.collectAsState()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -65,6 +68,26 @@ fun AsociarProfesionalScreen(
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
             viewModel.clearEstado()
         }
+    }
+
+    if (isLoading && asociadosCompletos.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                CircularProgressIndicator()
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Cargando profesionales...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
     }
 
     Scaffold(

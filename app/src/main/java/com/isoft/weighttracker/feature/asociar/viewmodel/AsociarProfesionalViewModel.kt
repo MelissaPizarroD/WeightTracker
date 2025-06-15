@@ -28,11 +28,16 @@ class AsociarProfesionalViewModel(
     private val _asociadosCompletos = MutableStateFlow<Map<String, ProfesionalCompleto>>(emptyMap())
     val asociadosCompletos: StateFlow<Map<String, ProfesionalCompleto>> = _asociadosCompletos
 
+    //Para pantalla de carga
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+
     fun clearEstado() {
         _estado.value = null
     }
 
     fun cargarProfesionalesAsociados() {
+        _isLoading.value = true
         viewModelScope.launch {
             Log.d("AsociarProfesional", "🔍 Iniciando carga de profesionales asociados...")
 
@@ -59,6 +64,8 @@ class AsociarProfesionalViewModel(
 
             } catch (e: Exception) {
                 Log.e("AsociarProfesional", "❌ Error al cargar asociados: ${e.message}", e)
+            } finally{
+                _isLoading.value = false
             }
         }
     }
