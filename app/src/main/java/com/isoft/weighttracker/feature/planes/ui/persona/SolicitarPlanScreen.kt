@@ -171,6 +171,7 @@ fun SolicitarPlanScreen(
                 "CONTROL_MEDICO" -> "Ej: Tengo diabetes/hipertensión y necesito un plan alimentario específico..."
                 else -> "Ej: Necesito un plan alimentario personalizado..."
             }
+
             TipoPlan.ENTRENAMIENTO -> when (objetivoEntrenamientoSeleccionado) {
                 "PERDER_GRASA" -> "Ej: Quiero perder grasa abdominal, prefiero entrenamientos de alta intensidad..."
                 "GANAR_MUSCULO" -> "Ej: Quiero ganar masa muscular en brazos y pecho, tengo experiencia con pesas..."
@@ -201,72 +202,70 @@ fun SolicitarPlanScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            //Pantalla de carga
-            if (isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator()
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "Cargando solicitudes...",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Cargando información...",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
-
-            // Formulario de solicitud
-            if (mostrandoFormulario) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // Formulario de solicitud
+                if (mostrandoFormulario) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                         ) {
-                            Text(
-                                "📝 Nueva Solicitud",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-
-                            // Selector de tipo de plan
-                            Text(
-                                "Tipo de Plan:",
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                if (tieneEntrenador) {
-                                    FilterChip(
-                                        onClick = { tipoPlanSeleccionado = TipoPlan.ENTRENAMIENTO },
-                                        label = { Text("💪 Entrenamiento") },
-                                        selected = tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO
-                                    )
-                                }
+                                Text(
+                                    "📝 Nueva Solicitud",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
 
-                                //Dentro del if (tieneNutricionista) en dado caso se implemente el form de planes
+                                // Selector de tipo de plan
+                                Text(
+                                    "Tipo de Plan:",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    if (tieneEntrenador) {
+                                        FilterChip(
+                                            onClick = {
+                                                tipoPlanSeleccionado = TipoPlan.ENTRENAMIENTO
+                                            },
+                                            label = { Text("💪 Entrenamiento") },
+                                            selected = tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO
+                                        )
+                                    }
+
+                                    //Dentro del if (tieneNutricionista) en dado caso se implemente el form de planes
 
 //                                FilterChip(
 //                                    onClick = { tipoPlanSeleccionado = TipoPlan.NUTRICION },
@@ -274,353 +273,147 @@ fun SolicitarPlanScreen(
 //                                    selected = tipoPlanSeleccionado == TipoPlan.NUTRICION
 //                                )
 
-                                if (tieneNutricionista) {
-                                    FilterChip(
-                                        onClick = {
-                                            mostrarDialogoNutricionNoDisponible = true
-                                        },
-                                        label = { Text("🥗 Nutrición") },
-                                        selected = false // Desactivado siempre
-                                    )
+                                    if (tieneNutricionista) {
+                                        FilterChip(
+                                            onClick = {
+                                                mostrarDialogoNutricionNoDisponible = true
+                                            },
+                                            label = { Text("🥗 Nutrición") },
+                                            selected = false // Desactivado siempre
+                                        )
+                                    }
                                 }
-                            }
 
-                            // CAMPOS ESPECÍFICOS PARA NUTRICIÓN
-                            if (tipoPlanSeleccionado == TipoPlan.NUTRICION) {
-                                Divider()
-                                Text(
-                                    "🥗 Información Nutricional",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                // Objetivo principal nutricional
-                                Text(
-                                    "🎯 Objetivo principal:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                var expandedObjetivoNutricion by remember { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = expandedObjetivoNutricion,
-                                    onExpandedChange = { expandedObjetivoNutricion = !expandedObjetivoNutricion }
-                                ) {
-                                    OutlinedTextField(
-                                        value = opcionesObjetivoNutricion.find { it.first == objetivoNutricionSeleccionado }?.second ?: "",
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        label = { Text("Seleccionar objetivo") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedObjetivoNutricion)
-                                        },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                        enabled = !isLoading
+                                // CAMPOS ESPECÍFICOS PARA NUTRICIÓN
+                                if (tipoPlanSeleccionado == TipoPlan.NUTRICION) {
+                                    Divider()
+                                    Text(
+                                        "🥗 Información Nutricional",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
                                     )
 
-                                    ExposedDropdownMenu(
+                                    // Objetivo principal nutricional
+                                    Text(
+                                        "🎯 Objetivo principal:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    var expandedObjetivoNutricion by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(
                                         expanded = expandedObjetivoNutricion,
-                                        onDismissRequest = { expandedObjetivoNutricion = false }
-                                    ) {
-                                        opcionesObjetivoNutricion.forEach { (valor, texto) ->
-                                            DropdownMenuItem(
-                                                text = { Text(texto) },
-                                                onClick = {
-                                                    objetivoNutricionSeleccionado = valor
-                                                    expandedObjetivoNutricion = false
-                                                }
-                                            )
+                                        onExpandedChange = {
+                                            expandedObjetivoNutricion = !expandedObjetivoNutricion
                                         }
-                                    }
-                                }
-
-                                // Nivel de actividad física
-                                Text(
-                                    "🏃 Nivel de actividad física:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                var expandedActividad by remember { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = expandedActividad,
-                                    onExpandedChange = { expandedActividad = !expandedActividad }
-                                ) {
-                                    OutlinedTextField(
-                                        value = opcionesNivelActividad.find { it.first == nivelActividadSeleccionado }?.second ?: "",
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        label = { Text("Seleccionar nivel de actividad") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedActividad)
-                                        },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                        enabled = !isLoading
-                                    )
-
-                                    ExposedDropdownMenu(
-                                        expanded = expandedActividad,
-                                        onDismissRequest = { expandedActividad = false }
                                     ) {
-                                        opcionesNivelActividad.forEach { (valor, texto) ->
-                                            DropdownMenuItem(
-                                                text = { Text(texto) },
-                                                onClick = {
-                                                    nivelActividadSeleccionado = valor
-                                                    expandedActividad = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
+                                        OutlinedTextField(
+                                            value = opcionesObjetivoNutricion.find { it.first == objetivoNutricionSeleccionado }?.second
+                                                ?: "",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Seleccionar objetivo") },
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedObjetivoNutricion)
+                                            },
+                                            modifier = Modifier
+                                                .menuAnchor()
+                                                .fillMaxWidth(),
+                                            enabled = !isLoading
+                                        )
 
-                                // Restricciones alimentarias CON CHECKBOXES
-                                Text(
-                                    "🚫 Restricciones alimentarias:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        opcionesRestricciones.forEach { (valor, texto) ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth(),
-                                                verticalAlignment = Alignment.CenterVertically
-                                            ) {
-                                                Checkbox(
-                                                    checked = restriccionesSeleccionadas.contains(valor),
-                                                    onCheckedChange = { checked ->
-                                                        restriccionesSeleccionadas = if (checked) {
-                                                            restriccionesSeleccionadas + valor
-                                                        } else {
-                                                            restriccionesSeleccionadas - valor
-                                                        }
-                                                    },
-                                                    enabled = !isLoading
-                                                )
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Text(
-                                                    texto,
-                                                    style = MaterialTheme.typography.bodyMedium,
-                                                    modifier = Modifier.weight(1f)
+                                        ExposedDropdownMenu(
+                                            expanded = expandedObjetivoNutricion,
+                                            onDismissRequest = { expandedObjetivoNutricion = false }
+                                        ) {
+                                            opcionesObjetivoNutricion.forEach { (valor, texto) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(texto) },
+                                                    onClick = {
+                                                        objetivoNutricionSeleccionado = valor
+                                                        expandedObjetivoNutricion = false
+                                                    }
                                                 )
                                             }
                                         }
+                                    }
 
-                                        if (restriccionesSeleccionadas.isEmpty()) {
-                                            Text(
-                                                "Ninguna restricción seleccionada",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(start = 40.dp)
-                                            )
+                                    // Nivel de actividad física
+                                    Text(
+                                        "🏃 Nivel de actividad física:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    var expandedActividad by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedActividad,
+                                        onExpandedChange = {
+                                            expandedActividad = !expandedActividad
+                                        }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = opcionesNivelActividad.find { it.first == nivelActividadSeleccionado }?.second
+                                                ?: "",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Seleccionar nivel de actividad") },
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedActividad)
+                                            },
+                                            modifier = Modifier
+                                                .menuAnchor()
+                                                .fillMaxWidth(),
+                                            enabled = !isLoading
+                                        )
+
+                                        ExposedDropdownMenu(
+                                            expanded = expandedActividad,
+                                            onDismissRequest = { expandedActividad = false }
+                                        ) {
+                                            opcionesNivelActividad.forEach { (valor, texto) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(texto) },
+                                                    onClick = {
+                                                        nivelActividadSeleccionado = valor
+                                                        expandedActividad = false
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
-                                // Campo de texto para "Otras" restricciones
-                                if (restriccionesSeleccionadas.contains("OTRAS")) {
-                                    OutlinedTextField(
-                                        value = restriccionesOtras,
-                                        onValueChange = { restriccionesOtras = it },
-                                        label = { Text("Especificar alergias/intolerancias") },
-                                        placeholder = { Text("Ej: Alérgico a frutos secos, intolerante al kiwi...") },
+                                    // Restricciones alimentarias CON CHECKBOXES
+                                    Text(
+                                        "🚫 Restricciones alimentarias:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    Card(
                                         modifier = Modifier.fillMaxWidth(),
-                                        maxLines = 2,
-                                        enabled = !isLoading
-                                    )
-                                }
-
-                                // Campo de texto para "Restricciones médicas"
-                                if (restriccionesSeleccionadas.contains("RESTRICCIONES_MEDICAS")) {
-                                    OutlinedTextField(
-                                        value = restriccionesMedicas,
-                                        onValueChange = { restriccionesMedicas = it },
-                                        label = { Text("Especificar restricciones médicas") },
-                                        placeholder = { Text("Ej: Diabetes, hipertensión, problemas renales, medicamentos...") },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        maxLines = 2,
-                                        enabled = !isLoading
-                                    )
-                                }
-                            }
-
-                            // CAMPOS ESPECÍFICOS PARA ENTRENAMIENTO
-                            else if (tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO) {
-                                Divider()
-                                Text(
-                                    "💪 Información de Entrenamiento",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
-                                )
-
-                                // Objetivo del entrenamiento
-                                Text(
-                                    "🎯 Objetivo del entrenamiento:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                var expandedObjetivoEntrenamiento by remember { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = expandedObjetivoEntrenamiento,
-                                    onExpandedChange = { expandedObjetivoEntrenamiento = !expandedObjetivoEntrenamiento }
-                                ) {
-                                    OutlinedTextField(
-                                        value = opcionesObjetivoEntrenamiento.find { it.first == objetivoEntrenamientoSeleccionado }?.second ?: "",
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        label = { Text("Seleccionar objetivo") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedObjetivoEntrenamiento)
-                                        },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                        enabled = !isLoading
-                                    )
-
-                                    ExposedDropdownMenu(
-                                        expanded = expandedObjetivoEntrenamiento,
-                                        onDismissRequest = { expandedObjetivoEntrenamiento = false }
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                                     ) {
-                                        opcionesObjetivoEntrenamiento.forEach { (valor, texto) ->
-                                            DropdownMenuItem(
-                                                text = { Text(texto) },
-                                                onClick = {
-                                                    objetivoEntrenamientoSeleccionado = valor
-                                                    expandedObjetivoEntrenamiento = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // Experiencia previa
-                                Text(
-                                    "📈 Experiencia previa:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                var expandedExperiencia by remember { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = expandedExperiencia,
-                                    onExpandedChange = { expandedExperiencia = !expandedExperiencia }
-                                ) {
-                                    OutlinedTextField(
-                                        value = opcionesExperienciaPrevia.find { it.first == experienciaPreviaSeleccionada }?.second ?: "",
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        label = { Text("Seleccionar experiencia") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedExperiencia)
-                                        },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                        enabled = !isLoading
-                                    )
-
-                                    ExposedDropdownMenu(
-                                        expanded = expandedExperiencia,
-                                        onDismissRequest = { expandedExperiencia = false }
-                                    ) {
-                                        opcionesExperienciaPrevia.forEach { (valor, texto) ->
-                                            DropdownMenuItem(
-                                                text = { Text(texto) },
-                                                onClick = {
-                                                    experienciaPreviaSeleccionada = valor
-                                                    expandedExperiencia = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-
-                                // Disponibilidad semanal
-                                Text(
-                                    "📅 Disponibilidad semanal:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                var expandedDisponibilidad by remember { mutableStateOf(false) }
-                                ExposedDropdownMenuBox(
-                                    expanded = expandedDisponibilidad,
-                                    onExpandedChange = { expandedDisponibilidad = !expandedDisponibilidad }
-                                ) {
-                                    OutlinedTextField(
-                                        value = opcionesDisponibilidadSemanal.find { it.first == disponibilidadSemanalSeleccionada }?.second ?: "",
-                                        onValueChange = { },
-                                        readOnly = true,
-                                        label = { Text("Días disponibles") },
-                                        trailingIcon = {
-                                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDisponibilidad)
-                                        },
-                                        modifier = Modifier
-                                            .menuAnchor()
-                                            .fillMaxWidth(),
-                                        enabled = !isLoading
-                                    )
-
-                                    ExposedDropdownMenu(
-                                        expanded = expandedDisponibilidad,
-                                        onDismissRequest = { expandedDisponibilidad = false }
-                                    ) {
-                                        opcionesDisponibilidadSemanal.forEach { (valor, texto) ->
-                                            DropdownMenuItem(
-                                                text = { Text(texto) },
-                                                onClick = {
-                                                    disponibilidadSemanalSeleccionada = valor
-                                                    expandedDisponibilidad = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                }
-
-
-// Equipamiento disponible CON CHECKBOXES Y ESPECIFICACIONES
-                                Text(
-                                    "🏋️ Equipamiento disponible:",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        opcionesEquipamiento.forEach { (valor, texto) ->
-                                            Column {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            opcionesRestricciones.forEach { (valor, texto) ->
                                                 Row(
                                                     modifier = Modifier.fillMaxWidth(),
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Checkbox(
-                                                        checked = equipamientoSeleccionado.contains(valor),
+                                                        checked = restriccionesSeleccionadas.contains(
+                                                            valor
+                                                        ),
                                                         onCheckedChange = { checked ->
-                                                            equipamientoSeleccionado = if (checked) {
-                                                                equipamientoSeleccionado + valor
-                                                            } else {
-                                                                equipamientoSeleccionado - valor
-                                                            }
+                                                            restriccionesSeleccionadas =
+                                                                if (checked) {
+                                                                    restriccionesSeleccionadas + valor
+                                                                } else {
+                                                                    restriccionesSeleccionadas - valor
+                                                                }
                                                         },
                                                         enabled = !isLoading
                                                     )
@@ -631,345 +424,602 @@ fun SolicitarPlanScreen(
                                                         modifier = Modifier.weight(1f)
                                                     )
                                                 }
-
-                                                // Campos de especificación que aparecen al seleccionar
-                                                if (equipamientoSeleccionado.contains(valor)) {
-                                                    Spacer(modifier = Modifier.height(8.dp))
-                                                    when (valor) {
-                                                        "GIMNASIO" -> OutlinedTextField(
-                                                            value = especificacionGimnasio,
-                                                            onValueChange = { especificacionGimnasio = it },
-                                                            label = { Text("Especificar gimnasio/centro") },
-                                                            placeholder = { Text("Ej: Smartfit, gimnasio del barrio, club deportivo...") },
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(start = 32.dp),
-                                                            enabled = !isLoading,
-                                                            singleLine = true
-                                                        )
-                                                        "PESAS_CASA" -> OutlinedTextField(
-                                                            value = especificacionPesas,
-                                                            onValueChange = { especificacionPesas = it },
-                                                            label = { Text("Especificar pesas disponibles") },
-                                                            placeholder = { Text("Ej: Mancuernas 5-20kg, barra olímpica, discos...") },
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(start = 32.dp),
-                                                            enabled = !isLoading,
-                                                            singleLine = true
-                                                        )
-                                                        "EQUIPAMIENTO_CARDIO" -> OutlinedTextField(
-                                                            value = especificacionCardio,
-                                                            onValueChange = { especificacionCardio = it },
-                                                            label = { Text("Especificar equipos cardio") },
-                                                            placeholder = { Text("Ej: Cinta, bicicleta estática, elíptica...") },
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(start = 32.dp),
-                                                            enabled = !isLoading,
-                                                            singleLine = true
-                                                        )
-                                                        "ACCESORIOS" -> OutlinedTextField(
-                                                            value = especificacionAccesorios,
-                                                            onValueChange = { especificacionAccesorios = it },
-                                                            label = { Text("Especificar accesorios") },
-                                                            placeholder = { Text("Ej: Bandas elásticas, TRX, pelotas medicinales...") },
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(start = 32.dp),
-                                                            enabled = !isLoading,
-                                                            singleLine = true
-                                                        )
-                                                        "OTROS" -> OutlinedTextField(
-                                                            value = especificacionOtros,
-                                                            onValueChange = { especificacionOtros = it },
-                                                            label = { Text("Especificar otros equipos") },
-                                                            placeholder = { Text("Ej: Kettlebells, barra de dominadas...") },
-                                                            modifier = Modifier
-                                                                .fillMaxWidth()
-                                                                .padding(start = 32.dp),
-                                                            enabled = !isLoading,
-                                                            singleLine = true
-                                                        )
-                                                    }
-                                                }
                                             }
-                                        }
 
-                                        if (equipamientoSeleccionado.isEmpty()) {
-                                            Text(
-                                                "Ningún equipamiento seleccionado",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                modifier = Modifier.padding(start = 40.dp)
-                                            )
+                                            if (restriccionesSeleccionadas.isEmpty()) {
+                                                Text(
+                                                    "Ninguna restricción seleccionada",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(start = 40.dp)
+                                                )
+                                            }
                                         }
                                     }
-                                }
-                            }
 
-                            // Divider antes del campo de descripción
-                            if (tipoPlanSeleccionado == TipoPlan.NUTRICION || tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO) {
-                                Divider()
-                            }
-
-                            // Campo de descripción
-                            OutlinedTextField(
-                                value = descripcion,
-                                onValueChange = { descripcion = it },
-                                label = { Text("Descripción adicional") },
-                                placeholder = {
-                                    Text(getPlaceholderDescripcion())
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                maxLines = 4,
-                                singleLine = false,
-                                enabled = !isLoading
-                            )
-
-                            // Botones de acción
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                OutlinedButton(
-                                    onClick = limpiarFormulario,
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isLoading
-                                ) {
-                                    Text("Cancelar")
-                                }
-
-                                Button(
-                                    onClick = {
-                                        val profesionalId = when (tipoPlanSeleccionado) {
-                                            TipoPlan.ENTRENAMIENTO -> profesionalesAsociados["entrenador"]?.uid
-                                            TipoPlan.NUTRICION -> profesionalesAsociados["nutricionista"]?.uid
-                                        }
-
-                                        // Validaciones específicas según tipo de plan
-                                        if (profesionalId != null && descripcion.isNotBlank()) {
-                                            val esNutricion = tipoPlanSeleccionado == TipoPlan.NUTRICION
-                                            val esEntrenamiento = tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO
-
-                                            // Validaciones para NUTRICIÓN
-                                            if (esNutricion) {
-                                                if (objetivoNutricionSeleccionado.isEmpty()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor selecciona tu objetivo nutricional",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                if (nivelActividadSeleccionado.isEmpty()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor selecciona tu nivel de actividad física",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                if (restriccionesSeleccionadas.contains("OTRAS") && restriccionesOtras.isBlank()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor especifica tus alergias/intolerancias",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                if (restriccionesSeleccionadas.contains("RESTRICCIONES_MEDICAS") && restriccionesMedicas.isBlank()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor especifica tus restricciones médicas",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-                                            }
-
-                                            // Validaciones para ENTRENAMIENTO
-                                            if (esEntrenamiento) {
-                                                if (objetivoEntrenamientoSeleccionado.isEmpty()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor selecciona tu objetivo de entrenamiento",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                if (experienciaPreviaSeleccionada.isEmpty()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor indica tu experiencia previa",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                if (disponibilidadSemanalSeleccionada.isEmpty()) {
-                                                    Toast.makeText(
-                                                        context,
-                                                        "⚠️ Por favor selecciona tu disponibilidad semanal",
-                                                        Toast.LENGTH_LONG
-                                                    ).show()
-                                                    return@Button
-                                                }
-
-                                                // Validar especificaciones de equipamiento
-                                                val equipamientosConEspecificacion = listOf("GIMNASIO", "PESAS_CASA", "EQUIPAMIENTO_CARDIO", "ACCESORIOS", "OTROS")
-                                                for (equipo in equipamientosConEspecificacion) {
-                                                    if (equipamientoSeleccionado.contains(equipo)) {
-                                                        val especificacion = when (equipo) {
-                                                            "GIMNASIO" -> especificacionGimnasio
-                                                            "PESAS_CASA" -> especificacionPesas
-                                                            "EQUIPAMIENTO_CARDIO" -> especificacionCardio
-                                                            "ACCESORIOS" -> especificacionAccesorios
-                                                            "OTROS" -> especificacionOtros
-                                                            else -> ""
-                                                        }
-                                                        if (especificacion.isBlank()) {
-                                                            val tipoEquipo = when (equipo) {
-                                                                "GIMNASIO" -> "gimnasio/centro deportivo"
-                                                                "PESAS_CASA" -> "pesas disponibles en casa"
-                                                                "EQUIPAMIENTO_CARDIO" -> "equipos cardiovasculares"
-                                                                "ACCESORIOS" -> "accesorios deportivos"
-                                                                "OTROS" -> "otros equipos"
-                                                                else -> "equipamiento"
-                                                            }
-                                                            Toast.makeText(
-                                                                context,
-                                                                "⚠️ Por favor especifica tu $tipoEquipo",
-                                                                Toast.LENGTH_LONG
-                                                            ).show()
-                                                            return@Button
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                            // Mostrar diálogo de confirmación
-                                            mostrarDialogoConfirmacion = true
-                                        } else {
-                                            if (profesionalId == null) {
-                                                Toast.makeText(
-                                                    context,
-                                                    "⚠️ Error: No se encontró el profesional asociado",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            } else {
-                                                Toast.makeText(
-                                                    context,
-                                                    "⚠️ Por favor completa la descripción",
-                                                    Toast.LENGTH_SHORT
-                                                ).show()
-                                            }
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    enabled = !isLoading
-                                ) {
-                                    if (isLoading) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(16.dp),
-                                            strokeWidth = 2.dp
+                                    // Campo de texto para "Otras" restricciones
+                                    if (restriccionesSeleccionadas.contains("OTRAS")) {
+                                        OutlinedTextField(
+                                            value = restriccionesOtras,
+                                            onValueChange = { restriccionesOtras = it },
+                                            label = { Text("Especificar alergias/intolerancias") },
+                                            placeholder = { Text("Ej: Alérgico a frutos secos, intolerante al kiwi...") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            maxLines = 2,
+                                            enabled = !isLoading
                                         )
-                                    } else {
-                                        Icon(Icons.Default.Send, contentDescription = null)
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Enviar")
+                                    }
+
+                                    // Campo de texto para "Restricciones médicas"
+                                    if (restriccionesSeleccionadas.contains("RESTRICCIONES_MEDICAS")) {
+                                        OutlinedTextField(
+                                            value = restriccionesMedicas,
+                                            onValueChange = { restriccionesMedicas = it },
+                                            label = { Text("Especificar restricciones médicas") },
+                                            placeholder = { Text("Ej: Diabetes, hipertensión, problemas renales, medicamentos...") },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            maxLines = 2,
+                                            enabled = !isLoading
+                                        )
+                                    }
+                                }
+
+                                // CAMPOS ESPECÍFICOS PARA ENTRENAMIENTO
+                                else if (tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO) {
+                                    Divider()
+                                    Text(
+                                        "💪 Información de Entrenamiento",
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold
+                                    )
+
+                                    // Objetivo del entrenamiento
+                                    Text(
+                                        "🎯 Objetivo del entrenamiento:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    var expandedObjetivoEntrenamiento by remember {
+                                        mutableStateOf(
+                                            false
+                                        )
+                                    }
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedObjetivoEntrenamiento,
+                                        onExpandedChange = {
+                                            expandedObjetivoEntrenamiento =
+                                                !expandedObjetivoEntrenamiento
+                                        }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = opcionesObjetivoEntrenamiento.find { it.first == objetivoEntrenamientoSeleccionado }?.second
+                                                ?: "",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Seleccionar objetivo") },
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedObjetivoEntrenamiento)
+                                            },
+                                            modifier = Modifier
+                                                .menuAnchor()
+                                                .fillMaxWidth(),
+                                            enabled = !isLoading
+                                        )
+
+                                        ExposedDropdownMenu(
+                                            expanded = expandedObjetivoEntrenamiento,
+                                            onDismissRequest = {
+                                                expandedObjetivoEntrenamiento = false
+                                            }
+                                        ) {
+                                            opcionesObjetivoEntrenamiento.forEach { (valor, texto) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(texto) },
+                                                    onClick = {
+                                                        objetivoEntrenamientoSeleccionado = valor
+                                                        expandedObjetivoEntrenamiento = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Experiencia previa
+                                    Text(
+                                        "📈 Experiencia previa:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    var expandedExperiencia by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedExperiencia,
+                                        onExpandedChange = {
+                                            expandedExperiencia = !expandedExperiencia
+                                        }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = opcionesExperienciaPrevia.find { it.first == experienciaPreviaSeleccionada }?.second
+                                                ?: "",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Seleccionar experiencia") },
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedExperiencia)
+                                            },
+                                            modifier = Modifier
+                                                .menuAnchor()
+                                                .fillMaxWidth(),
+                                            enabled = !isLoading
+                                        )
+
+                                        ExposedDropdownMenu(
+                                            expanded = expandedExperiencia,
+                                            onDismissRequest = { expandedExperiencia = false }
+                                        ) {
+                                            opcionesExperienciaPrevia.forEach { (valor, texto) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(texto) },
+                                                    onClick = {
+                                                        experienciaPreviaSeleccionada = valor
+                                                        expandedExperiencia = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    // Disponibilidad semanal
+                                    Text(
+                                        "📅 Disponibilidad semanal:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    var expandedDisponibilidad by remember { mutableStateOf(false) }
+                                    ExposedDropdownMenuBox(
+                                        expanded = expandedDisponibilidad,
+                                        onExpandedChange = {
+                                            expandedDisponibilidad = !expandedDisponibilidad
+                                        }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = opcionesDisponibilidadSemanal.find { it.first == disponibilidadSemanalSeleccionada }?.second
+                                                ?: "",
+                                            onValueChange = { },
+                                            readOnly = true,
+                                            label = { Text("Días disponibles") },
+                                            trailingIcon = {
+                                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDisponibilidad)
+                                            },
+                                            modifier = Modifier
+                                                .menuAnchor()
+                                                .fillMaxWidth(),
+                                            enabled = !isLoading
+                                        )
+
+                                        ExposedDropdownMenu(
+                                            expanded = expandedDisponibilidad,
+                                            onDismissRequest = { expandedDisponibilidad = false }
+                                        ) {
+                                            opcionesDisponibilidadSemanal.forEach { (valor, texto) ->
+                                                DropdownMenuItem(
+                                                    text = { Text(texto) },
+                                                    onClick = {
+                                                        disponibilidadSemanalSeleccionada = valor
+                                                        expandedDisponibilidad = false
+                                                    }
+                                                )
+                                            }
+                                        }
+                                    }
+
+
+// Equipamiento disponible CON CHECKBOXES Y ESPECIFICACIONES
+                                    Text(
+                                        "🏋️ Equipamiento disponible:",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+
+                                    Card(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.padding(12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                                        ) {
+                                            opcionesEquipamiento.forEach { (valor, texto) ->
+                                                Column {
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth(),
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Checkbox(
+                                                            checked = equipamientoSeleccionado.contains(
+                                                                valor
+                                                            ),
+                                                            onCheckedChange = { checked ->
+                                                                equipamientoSeleccionado =
+                                                                    if (checked) {
+                                                                        equipamientoSeleccionado + valor
+                                                                    } else {
+                                                                        equipamientoSeleccionado - valor
+                                                                    }
+                                                            },
+                                                            enabled = !isLoading
+                                                        )
+                                                        Spacer(modifier = Modifier.width(8.dp))
+                                                        Text(
+                                                            texto,
+                                                            style = MaterialTheme.typography.bodyMedium,
+                                                            modifier = Modifier.weight(1f)
+                                                        )
+                                                    }
+
+                                                    // Campos de especificación que aparecen al seleccionar
+                                                    if (equipamientoSeleccionado.contains(valor)) {
+                                                        Spacer(modifier = Modifier.height(8.dp))
+                                                        when (valor) {
+                                                            "GIMNASIO" -> OutlinedTextField(
+                                                                value = especificacionGimnasio,
+                                                                onValueChange = {
+                                                                    especificacionGimnasio = it
+                                                                },
+                                                                label = { Text("Especificar gimnasio/centro") },
+                                                                placeholder = { Text("Ej: Smartfit, gimnasio del barrio, club deportivo...") },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(start = 32.dp),
+                                                                enabled = !isLoading,
+                                                                singleLine = true
+                                                            )
+
+                                                            "PESAS_CASA" -> OutlinedTextField(
+                                                                value = especificacionPesas,
+                                                                onValueChange = {
+                                                                    especificacionPesas = it
+                                                                },
+                                                                label = { Text("Especificar pesas disponibles") },
+                                                                placeholder = { Text("Ej: Mancuernas 5-20kg, barra olímpica, discos...") },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(start = 32.dp),
+                                                                enabled = !isLoading,
+                                                                singleLine = true
+                                                            )
+
+                                                            "EQUIPAMIENTO_CARDIO" -> OutlinedTextField(
+                                                                value = especificacionCardio,
+                                                                onValueChange = {
+                                                                    especificacionCardio = it
+                                                                },
+                                                                label = { Text("Especificar equipos cardio") },
+                                                                placeholder = { Text("Ej: Cinta, bicicleta estática, elíptica...") },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(start = 32.dp),
+                                                                enabled = !isLoading,
+                                                                singleLine = true
+                                                            )
+
+                                                            "ACCESORIOS" -> OutlinedTextField(
+                                                                value = especificacionAccesorios,
+                                                                onValueChange = {
+                                                                    especificacionAccesorios = it
+                                                                },
+                                                                label = { Text("Especificar accesorios") },
+                                                                placeholder = { Text("Ej: Bandas elásticas, TRX, pelotas medicinales...") },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(start = 32.dp),
+                                                                enabled = !isLoading,
+                                                                singleLine = true
+                                                            )
+
+                                                            "OTROS" -> OutlinedTextField(
+                                                                value = especificacionOtros,
+                                                                onValueChange = {
+                                                                    especificacionOtros = it
+                                                                },
+                                                                label = { Text("Especificar otros equipos") },
+                                                                placeholder = { Text("Ej: Kettlebells, barra de dominadas...") },
+                                                                modifier = Modifier
+                                                                    .fillMaxWidth()
+                                                                    .padding(start = 32.dp),
+                                                                enabled = !isLoading,
+                                                                singleLine = true
+                                                            )
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if (equipamientoSeleccionado.isEmpty()) {
+                                                Text(
+                                                    "Ningún equipamiento seleccionado",
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier.padding(start = 40.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Divider antes del campo de descripción
+                                if (tipoPlanSeleccionado == TipoPlan.NUTRICION || tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO) {
+                                    Divider()
+                                }
+
+                                // Campo de descripción
+                                OutlinedTextField(
+                                    value = descripcion,
+                                    onValueChange = { descripcion = it },
+                                    label = { Text("Descripción adicional") },
+                                    placeholder = {
+                                        Text(getPlaceholderDescripcion())
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    maxLines = 4,
+                                    singleLine = false,
+                                    enabled = !isLoading
+                                )
+
+                                // Botones de acción
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = limpiarFormulario,
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !isLoading
+                                    ) {
+                                        Text("Cancelar")
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            val profesionalId = when (tipoPlanSeleccionado) {
+                                                TipoPlan.ENTRENAMIENTO -> profesionalesAsociados["entrenador"]?.uid
+                                                TipoPlan.NUTRICION -> profesionalesAsociados["nutricionista"]?.uid
+                                            }
+
+                                            // Validaciones específicas según tipo de plan
+                                            if (profesionalId != null && descripcion.isNotBlank()) {
+                                                val esNutricion =
+                                                    tipoPlanSeleccionado == TipoPlan.NUTRICION
+                                                val esEntrenamiento =
+                                                    tipoPlanSeleccionado == TipoPlan.ENTRENAMIENTO
+
+                                                // Validaciones para NUTRICIÓN
+                                                if (esNutricion) {
+                                                    if (objetivoNutricionSeleccionado.isEmpty()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor selecciona tu objetivo nutricional",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    if (nivelActividadSeleccionado.isEmpty()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor selecciona tu nivel de actividad física",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    if (restriccionesSeleccionadas.contains("OTRAS") && restriccionesOtras.isBlank()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor especifica tus alergias/intolerancias",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    if (restriccionesSeleccionadas.contains("RESTRICCIONES_MEDICAS") && restriccionesMedicas.isBlank()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor especifica tus restricciones médicas",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+                                                }
+
+                                                // Validaciones para ENTRENAMIENTO
+                                                if (esEntrenamiento) {
+                                                    if (objetivoEntrenamientoSeleccionado.isEmpty()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor selecciona tu objetivo de entrenamiento",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    if (experienciaPreviaSeleccionada.isEmpty()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor indica tu experiencia previa",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    if (disponibilidadSemanalSeleccionada.isEmpty()) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "⚠️ Por favor selecciona tu disponibilidad semanal",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                        return@Button
+                                                    }
+
+                                                    // Validar especificaciones de equipamiento
+                                                    val equipamientosConEspecificacion = listOf(
+                                                        "GIMNASIO",
+                                                        "PESAS_CASA",
+                                                        "EQUIPAMIENTO_CARDIO",
+                                                        "ACCESORIOS",
+                                                        "OTROS"
+                                                    )
+                                                    for (equipo in equipamientosConEspecificacion) {
+                                                        if (equipamientoSeleccionado.contains(equipo)) {
+                                                            val especificacion = when (equipo) {
+                                                                "GIMNASIO" -> especificacionGimnasio
+                                                                "PESAS_CASA" -> especificacionPesas
+                                                                "EQUIPAMIENTO_CARDIO" -> especificacionCardio
+                                                                "ACCESORIOS" -> especificacionAccesorios
+                                                                "OTROS" -> especificacionOtros
+                                                                else -> ""
+                                                            }
+                                                            if (especificacion.isBlank()) {
+                                                                val tipoEquipo = when (equipo) {
+                                                                    "GIMNASIO" -> "gimnasio/centro deportivo"
+                                                                    "PESAS_CASA" -> "pesas disponibles en casa"
+                                                                    "EQUIPAMIENTO_CARDIO" -> "equipos cardiovasculares"
+                                                                    "ACCESORIOS" -> "accesorios deportivos"
+                                                                    "OTROS" -> "otros equipos"
+                                                                    else -> "equipamiento"
+                                                                }
+                                                                Toast.makeText(
+                                                                    context,
+                                                                    "⚠️ Por favor especifica tu $tipoEquipo",
+                                                                    Toast.LENGTH_LONG
+                                                                ).show()
+                                                                return@Button
+                                                            }
+                                                        }
+                                                    }
+                                                }
+
+                                                // Mostrar diálogo de confirmación
+                                                mostrarDialogoConfirmacion = true
+                                            } else {
+                                                if (profesionalId == null) {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "⚠️ Error: No se encontró el profesional asociado",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                } else {
+                                                    Toast.makeText(
+                                                        context,
+                                                        "⚠️ Por favor completa la descripción",
+                                                        Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        enabled = !isLoading
+                                    ) {
+                                        if (isLoading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp
+                                            )
+                                        } else {
+                                            Icon(Icons.Default.Send, contentDescription = null)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text("Enviar")
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            // Botón para nueva solicitud (si no está mostrando el formulario)
-            if (tieneEntrenador || tieneNutricionista) {
-                item {
-                    if (!mostrandoFormulario) {
-                        Button(
-                            onClick = { mostrandoFormulario = true },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading
-                        ) {
-                            Icon(Icons.Default.Send, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Solicitar Nuevo Plan")
+                // Botón para nueva solicitud (si no está mostrando el formulario)
+                if (tieneEntrenador || tieneNutricionista) {
+                    item {
+                        if (!mostrandoFormulario) {
+                            Button(
+                                onClick = { mostrandoFormulario = true },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !isLoading
+                            ) {
+                                Icon(Icons.Default.Send, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Solicitar Nuevo Plan")
+                            }
                         }
                     }
                 }
-            }
 
-            // Mensaje si no tiene profesionales asociados
-            if (!tieneEntrenador && !tieneNutricionista) {
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally
-                        ) {
-                            Text(
-                                "⚠️ No tienes profesionales asociados",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                "Para solicitar planes debes tener al menos un entrenador o nutricionista asociado a tu cuenta.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onErrorContainer
-                            )
-                        }
-                    }
-                }
-            } else {
-                // Lista de solicitudes existentes
-                item {
-                    Text(
-                        "📋 Mis Solicitudes",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                if (solicitudesPendientes.isEmpty()) {
+                // Mensaje si no tiene profesionales asociados
+                if (!tieneEntrenador && !tieneNutricionista) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
                         ) {
                             Column(
-                                modifier = Modifier.padding(24.dp),
+                                modifier = Modifier.padding(16.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally
                             ) {
                                 Text(
-                                    "📝 No tienes solicitudes",
+                                    "⚠️ No tienes profesionales asociados",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.Medium
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    "Crea tu primera solicitud de plan usando el botón de arriba",
+                                    "Para solicitar planes debes tener al menos un entrenador o nutricionista asociado a tu cuenta.",
                                     style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             }
                         }
                     }
                 } else {
-                    items(solicitudesPendientes) { solicitud ->
-                        SolicitudCard(solicitud = solicitud)
+                    // Lista de solicitudes existentes
+                    item {
+                        Text(
+                            "📋 Mis Solicitudes",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    if (solicitudesPendientes.isEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "📝 No tienes solicitudes",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Medium
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        "Crea tu primera solicitud de plan usando el botón de arriba",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        items(solicitudesPendientes) { solicitud ->
+                            SolicitudCard(solicitud = solicitud)
+                        }
                     }
                 }
             }
@@ -994,8 +1044,11 @@ fun SolicitarPlanScreen(
                 }
 
                 val profesionalNombre = when (tipoPlanSeleccionado) {
-                    TipoPlan.NUTRICION -> profesionalesAsociados["nutricionista"]?.name ?: "tu nutricionista"
-                    TipoPlan.ENTRENAMIENTO -> profesionalesAsociados["entrenador"]?.name ?: "tu entrenador"
+                    TipoPlan.NUTRICION -> profesionalesAsociados["nutricionista"]?.name
+                        ?: "tu nutricionista"
+
+                    TipoPlan.ENTRENAMIENTO -> profesionalesAsociados["entrenador"]?.name
+                        ?: "tu entrenador"
                 }
 
                 Column {
@@ -1052,7 +1105,8 @@ fun SolicitarPlanScreen(
                             // PARÁMETROS DE NUTRICIÓN
                             objetivoNutricion = if (esNutricion) objetivoNutricionSeleccionado else "",
                             nivelActividad = if (esNutricion) nivelActividadSeleccionado else "",
-                            restricciones = if (esNutricion) restriccionesSeleccionadas.filter { it != "OTRAS" && it != "RESTRICCIONES_MEDICAS" }.toList() else emptyList(),
+                            restricciones = if (esNutricion) restriccionesSeleccionadas.filter { it != "OTRAS" && it != "RESTRICCIONES_MEDICAS" }
+                                .toList() else emptyList(),
                             restriccionesOtras = if (esNutricion) restriccionesOtras else "",
                             restriccionesMedicas = if (esNutricion) restriccionesMedicas else "",
                             // PARÁMETROS DE ENTRENAMIENTO
@@ -1149,6 +1203,7 @@ private fun SolicitudCard(solicitud: SolicitudPlan) {
                     TipoPlan.ENTRENAMIENTO -> MaterialTheme.colorScheme.secondaryContainer
                     TipoPlan.NUTRICION -> MaterialTheme.colorScheme.tertiaryContainer
                 }
+
                 EstadoSolicitud.COMPLETADA -> MaterialTheme.colorScheme.primaryContainer
                 EstadoSolicitud.RECHAZADA -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
                 else -> MaterialTheme.colorScheme.surfaceVariant
