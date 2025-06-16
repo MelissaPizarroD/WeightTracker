@@ -334,7 +334,9 @@ fun PersonaHomeScreen(
                             Text(
                                 "¡Completa tu perfil!",
                                 style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                textAlign = TextAlign.Center
+
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(

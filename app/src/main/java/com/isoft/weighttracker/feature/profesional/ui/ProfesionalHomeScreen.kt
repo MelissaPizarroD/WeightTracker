@@ -311,7 +311,8 @@ fun ProfesionalHomeScreen(navController: NavController, role: String) {
                             Text(
                                 "¡Completa tu perfil profesional!",
                                 style = MaterialTheme.typography.headlineSmall,
-                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                textAlign = TextAlign.Center
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
