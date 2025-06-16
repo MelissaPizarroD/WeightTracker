@@ -93,7 +93,7 @@ fun LoginScreen(
 
                     // Título de la app - debajo de la imagen
                     Text(
-                        text = "Weight Tracker",
+                        text = "WeightTracker",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold,
                             fontSize = 28.sp
