@@ -19,7 +19,7 @@ class MainActivity : ComponentActivity() {
         permissionViewModel = ViewModelProvider(this)[PermissionViewModel::class.java]
 
         setContent {
-            com.isoft.weighttracker.ui.theme.WeightTrackerTheme(dynamicColor = false) {
+            com.isoft.weighttracker.ui.theme.WeightTrackerTheme(darkTheme = false) {
                 AppNavigation(
                     requestPermission = { permission ->
                         when (permission) {
